@@ -27,10 +27,10 @@ export function CodeEditor({ language, value, onChange }: CodeEditorProps) {
         language={monacoLanguage[language]}
         value={value}
         onChange={(next) => onChange(next ?? "")}
-        theme="vs"
+        theme="vs-dark"
         options={{
           minimap: { enabled: false },
-          fontSize: 13,
+          fontSize: 14,
           lineNumbers: "on",
           automaticLayout: true,
           scrollBeyondLastLine: false,

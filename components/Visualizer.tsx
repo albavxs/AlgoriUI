@@ -43,12 +43,12 @@ function SortingVisualizer({ event }: { event: TraceEvent | null }) {
         const isSwap = event?.t === "swap" && (index === i || index === j);
         const isScanning = event?.t === "stalin-step" && index === i;
         const color = inKept
-          ? "#34c759"
+          ? "#32d74b"
           : isSwap
-            ? "#ff9f0a"
+            ? "#ffd60a"
             : isCompare || isScanning
-              ? "#ff5e57"
-              : "#0a84ff";
+              ? "#ff453a"
+              : "#22d3ee";
 
         return (
           <motion.div
@@ -83,10 +83,10 @@ function SearchVisualizer({ event }: { event: TraceEvent | null }) {
   return (
     <div className="bars-wrap">
       {arr.map((value, index) => {
-        let color = "#98a2b3";
-        if (index >= left && index <= right) color = "#0a84ff";
-        if (index === mid) color = "#ff9f0a";
-        if (event?.t === "search-found" && index === mid) color = "#34c759";
+        let color = "#9ca3af";
+        if (index >= left && index <= right) color = "#22d3ee";
+        if (index === mid) color = "#ffd60a";
+        if (event?.t === "search-found" && index === mid) color = "#32d74b";
 
         return (
           <motion.div
@@ -150,24 +150,14 @@ function GraphVisualizer({ event }: { event: TraceEvent | null }) {
         const pa = positions[a];
         const pb = positions[b];
         if (!pa || !pb) return null;
-        return (
-          <line
-            key={`${a}-${b}-${index}`}
-            x1={pa.x}
-            y1={pa.y}
-            x2={pb.x}
-            y2={pb.y}
-            stroke="#a3adc2"
-            strokeWidth="2"
-          />
-        );
+        return <line key={`${a}-${b}-${index}`} x1={pa.x} y1={pa.y} x2={pb.x} y2={pb.y} stroke="#475569" strokeWidth="2" />;
       })}
       {nodes.map((node) => {
         const p = positions[node];
         const isCurrent = current === node;
         const isVisited = visited.has(node);
         const isFrontier = frontier.has(node);
-        const fill = isCurrent ? "#ff9f0a" : isVisited ? "#34c759" : isFrontier ? "#0a84ff" : "#94a3b8";
+        const fill = isCurrent ? "#ffd60a" : isVisited ? "#32d74b" : isFrontier ? "#22d3ee" : "#64748b";
 
         return (
           <g key={node}>
@@ -180,7 +170,7 @@ function GraphVisualizer({ event }: { event: TraceEvent | null }) {
               animate={{ scale: isCurrent ? 1.12 : 1 }}
               transition={{ duration: 0.18 }}
             />
-            <text x={p.x} y={p.y + 5} textAnchor="middle" fill="#fff" fontWeight="700" fontSize="14">
+            <text x={p.x} y={p.y + 5} textAnchor="middle" fill="#020617" fontWeight="700" fontSize="14">
               {node}
             </text>
           </g>
