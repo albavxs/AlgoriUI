@@ -1,4 +1,4 @@
-import type { AlgorithmDefinition, AlgorithmId, Language } from "@/lib/types";
+import type { AlgorithmDefinition, AlgorithmId, CodeProject, Language, ProjectFile } from "@/lib/types";
 
 const bubbleTs = `
 function emitArray(arr: number[], meta: Record<string, unknown> = {}) {
@@ -273,11 +273,22 @@ async function run(input: Input) {
   const adj = adjacency(nodes, edges);
   const visited = new Set<string>();
   const queue: string[] = [start];
+  const order: string[] = [];
   visited.add(start);
 
   while (queue.length) {
     const current = queue.shift()!;
-    emitStep({ t: "graph-state", nodes, edges, current, frontier: [...queue], visited: [...visited], mode: "bfs" });
+    order.push(current);
+    emitStep({
+      t: "graph-state",
+      nodes,
+      edges,
+      current,
+      frontier: [...queue],
+      visited: [...visited],
+      order: [...order],
+      mode: "bfs"
+    });
 
     for (const neighbor of adj.get(current) ?? []) {
       if (!visited.has(neighbor)) {
@@ -287,7 +298,7 @@ async function run(input: Input) {
     }
   }
 
-  emitStep({ t: "done", visited: [...visited], mode: "bfs" });
+  emitStep({ t: "done", nodes, edges, frontier: [], visited: [...visited], order: [...order], mode: "bfs" });
   return [...visited];
 }
 `;
@@ -308,11 +319,22 @@ async function run(input) {
   const adj = adjacency(nodes, edges);
   const visited = new Set();
   const queue = [start];
+  const order = [];
   visited.add(start);
 
   while (queue.length) {
     const current = queue.shift();
-    emitStep({ t: "graph-state", nodes, edges, current, frontier: [...queue], visited: [...visited], mode: "bfs" });
+    order.push(current);
+    emitStep({
+      t: "graph-state",
+      nodes,
+      edges,
+      current,
+      frontier: [...queue],
+      visited: [...visited],
+      order: [...order],
+      mode: "bfs"
+    });
 
     for (const neighbor of adj.get(current) ?? []) {
       if (!visited.has(neighbor)) {
@@ -322,7 +344,7 @@ async function run(input) {
     }
   }
 
-  emitStep({ t: "done", visited: [...visited], mode: "bfs" });
+  emitStep({ t: "done", nodes, edges, frontier: [], visited: [...visited], order: [...order], mode: "bfs" });
   return [...visited];
 }
 `;
@@ -343,9 +365,11 @@ def run(input_data):
     graph = adjacency(nodes, edges)
     visited = set([start])
     queue = [start]
+    order = []
 
     while queue:
         current = queue.pop(0)
+        order.append(current)
         emitStep({
             "t": "graph-state",
             "nodes": nodes,
@@ -353,6 +377,7 @@ def run(input_data):
             "current": current,
             "frontier": list(queue),
             "visited": list(visited),
+            "order": list(order),
             "mode": "bfs"
         })
 
@@ -361,7 +386,7 @@ def run(input_data):
                 visited.add(neighbor)
                 queue.append(neighbor)
 
-    emitStep({"t": "done", "visited": list(visited), "mode": "bfs"})
+    emitStep({"t": "done", "nodes": nodes, "edges": [list(e) for e in edges], "frontier": [], "visited": list(visited), "order": list(order), "mode": "bfs"})
     return list(visited)
 `;
 
@@ -383,13 +408,24 @@ async function run(input: Input) {
   const adj = adjacency(nodes, edges);
   const visited = new Set<string>();
   const stack: string[] = [start];
+  const order: string[] = [];
 
   while (stack.length) {
     const current = stack.pop()!;
     if (visited.has(current)) continue;
 
     visited.add(current);
-    emitStep({ t: "graph-state", nodes, edges, current, frontier: [...stack], visited: [...visited], mode: "dfs" });
+    order.push(current);
+    emitStep({
+      t: "graph-state",
+      nodes,
+      edges,
+      current,
+      frontier: [...stack],
+      visited: [...visited],
+      order: [...order],
+      mode: "dfs"
+    });
 
     const neighbors = [...(adj.get(current) ?? [])].reverse();
     for (const neighbor of neighbors) {
@@ -399,7 +435,7 @@ async function run(input: Input) {
     }
   }
 
-  emitStep({ t: "done", visited: [...visited], mode: "dfs" });
+  emitStep({ t: "done", nodes, edges, frontier: [], visited: [...visited], order: [...order], mode: "dfs" });
   return [...visited];
 }
 `;
@@ -420,13 +456,24 @@ async function run(input) {
   const adj = adjacency(nodes, edges);
   const visited = new Set();
   const stack = [start];
+  const order = [];
 
   while (stack.length) {
     const current = stack.pop();
     if (visited.has(current)) continue;
 
     visited.add(current);
-    emitStep({ t: "graph-state", nodes, edges, current, frontier: [...stack], visited: [...visited], mode: "dfs" });
+    order.push(current);
+    emitStep({
+      t: "graph-state",
+      nodes,
+      edges,
+      current,
+      frontier: [...stack],
+      visited: [...visited],
+      order: [...order],
+      mode: "dfs"
+    });
 
     const neighbors = [...(adj.get(current) ?? [])].reverse();
     for (const neighbor of neighbors) {
@@ -436,7 +483,7 @@ async function run(input) {
     }
   }
 
-  emitStep({ t: "done", visited: [...visited], mode: "dfs" });
+  emitStep({ t: "done", nodes, edges, frontier: [], visited: [...visited], order: [...order], mode: "dfs" });
   return [...visited];
 }
 `;
@@ -457,6 +504,7 @@ def run(input_data):
     graph = adjacency(nodes, edges)
     visited = set()
     stack = [start]
+    order = []
 
     while stack:
         current = stack.pop()
@@ -464,6 +512,7 @@ def run(input_data):
             continue
 
         visited.add(current)
+        order.append(current)
         emitStep({
             "t": "graph-state",
             "nodes": nodes,
@@ -471,6 +520,7 @@ def run(input_data):
             "current": current,
             "frontier": list(stack),
             "visited": list(visited),
+            "order": list(order),
             "mode": "dfs"
         })
 
@@ -480,7 +530,7 @@ def run(input_data):
             if neighbor not in visited:
                 stack.append(neighbor)
 
-    emitStep({"t": "done", "visited": list(visited), "mode": "dfs"})
+    emitStep({"t": "done", "nodes": nodes, "edges": [list(e) for e in edges], "frontier": [], "visited": list(visited), "order": list(order), "mode": "dfs"})
     return list(visited)
 `;
 
@@ -620,6 +670,49 @@ export function defaultInputText(id: AlgorithmId): string {
   return JSON.stringify(found.defaultInput, null, 2);
 }
 
-export function defaultCode(id: AlgorithmId, language: Language): string {
-  return algorithmById(id).templates[language];
+function algorithmFileStem(id: AlgorithmId): string {
+  return id.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase());
+}
+
+export function legacyEntrypointForLanguage(language: Language): string {
+  if (language === "python") {
+    return "main.py";
+  }
+
+  if (language === "js") {
+    return "main.js";
+  }
+
+  return "main.ts";
+}
+
+export function fileExtensionForLanguage(language: Language): string {
+  if (language === "python") {
+    return ".py";
+  }
+
+  if (language === "js") {
+    return ".js";
+  }
+
+  return ".ts";
+}
+
+export function entrypointForLanguage(id: AlgorithmId, language: Language): string {
+  return `${algorithmFileStem(id)}${fileExtensionForLanguage(language)}`;
+}
+
+export function createProjectFromTemplate(id: AlgorithmId, language: Language): CodeProject {
+  const entrypoint = entrypointForLanguage(id, language);
+  const file: ProjectFile = {
+    id: `${id}-${language}-entrypoint`,
+    name: entrypoint,
+    content: algorithmById(id).templates[language].trimStart()
+  };
+
+  return {
+    files: [file],
+    activeFileId: file.id,
+    entrypoint
+  };
 }

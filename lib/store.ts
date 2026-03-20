@@ -1,43 +1,86 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-import { algorithms, defaultCode, defaultInputText } from "@/lib/algorithms";
-import type { AlgorithmId, Language, Locale } from "@/lib/types";
+import {
+  algorithms,
+  createProjectFromTemplate,
+  defaultInputText,
+  entrypointForLanguage,
+  fileExtensionForLanguage,
+  legacyEntrypointForLanguage
+} from "@/lib/algorithms";
+import type {
+  AlgorithmId,
+  CodeProject,
+  Language,
+  Locale,
+  ProjectFile,
+  SoundPreset
+} from "@/lib/types";
 
-type CodeMap = Record<AlgorithmId, Record<Language, string>>;
+type ProjectMap = Record<AlgorithmId, Record<Language, CodeProject>>;
 type InputMap = Record<AlgorithmId, string>;
+
+type ShareHydratePayload = {
+  algorithmId: AlgorithmId;
+  language: Language;
+  project: CodeProject;
+  inputText: string;
+  locale: Locale;
+  soundPreset: SoundPreset;
+};
+
+type LegacyCodeMap = Record<AlgorithmId, Record<Language, string>>;
+export type EditorWrapMode = "auto" | "wrap" | "nowrap";
+export type EditorFontMode = "sm" | "md" | "lg";
 
 export type AppStore = {
   locale: Locale;
   selectedAlgorithmId: AlgorithmId;
   selectedLanguage: Language;
   speed: number;
-  codeMap: CodeMap;
+  soundPreset: SoundPreset;
+  editorWrapMode: EditorWrapMode;
+  editorFontMode: EditorFontMode;
+  projectMap: ProjectMap;
   inputMap: InputMap;
   setLocale: (locale: Locale) => void;
   setAlgorithm: (algorithmId: AlgorithmId) => void;
   setLanguage: (language: Language) => void;
   setSpeed: (speed: number) => void;
-  setCode: (algorithmId: AlgorithmId, language: Language, code: string) => void;
+  setSoundPreset: (soundPreset: SoundPreset) => void;
+  setEditorWrapMode: (editorWrapMode: EditorWrapMode) => void;
+  setEditorFontMode: (editorFontMode: EditorFontMode) => void;
   setInputText: (algorithmId: AlgorithmId, inputText: string) => void;
-  hydrateFromShare: (payload: {
-    algorithmId: AlgorithmId;
-    language: Language;
-    code: string;
-    inputText: string;
-    locale: Locale;
-  }) => void;
+  setActiveFile: (algorithmId: AlgorithmId, language: Language, fileId: string) => void;
+  updateFileContent: (
+    algorithmId: AlgorithmId,
+    language: Language,
+    fileId: string,
+    content: string
+  ) => void;
+  addFile: (algorithmId: AlgorithmId, language: Language) => void;
+  removeFile: (algorithmId: AlgorithmId, language: Language, fileId: string) => void;
+  hydrateFromShare: (payload: ShareHydratePayload) => void;
 };
 
-function buildInitialCodeMap(): CodeMap {
+function cloneProject(project: CodeProject): CodeProject {
+  return {
+    entrypoint: project.entrypoint,
+    activeFileId: project.activeFileId,
+    files: project.files.map((file) => ({ ...file }))
+  };
+}
+
+function buildInitialProjectMap(): ProjectMap {
   return algorithms.reduce((acc, algorithm) => {
     acc[algorithm.id] = {
-      ts: algorithm.templates.ts,
-      js: algorithm.templates.js,
-      python: algorithm.templates.python
+      ts: createProjectFromTemplate(algorithm.id, "ts"),
+      js: createProjectFromTemplate(algorithm.id, "js"),
+      python: createProjectFromTemplate(algorithm.id, "python")
     };
     return acc;
-  }, {} as CodeMap);
+  }, {} as ProjectMap);
 }
 
 function buildInitialInputMap(): InputMap {
@@ -47,6 +90,122 @@ function buildInitialInputMap(): InputMap {
   }, {} as InputMap);
 }
 
+function ensureProjectShape(
+  project: CodeProject | undefined,
+  algorithmId: AlgorithmId,
+  language: Language
+): CodeProject {
+  if (!project || !Array.isArray(project.files) || project.files.length === 0) {
+    return createProjectFromTemplate(algorithmId, language);
+  }
+
+  let files = project.files
+    .filter((file): file is ProjectFile => Boolean(file?.id && file?.name))
+    .map((file) => ({
+      id: file.id,
+      name: file.name,
+      content: file.content ?? ""
+    }));
+
+  if (files.length === 0) {
+    return createProjectFromTemplate(algorithmId, language);
+  }
+
+  const expectedEntrypoint = entrypointForLanguage(algorithmId, language);
+  const legacyEntrypoint = legacyEntrypointForLanguage(language);
+  let entrypoint = project.entrypoint || expectedEntrypoint;
+
+  const expectedFile = files.find((file) => file.name === expectedEntrypoint);
+  const legacyFile = files.find((file) => file.name === legacyEntrypoint);
+
+  if (!expectedFile && legacyFile && (entrypoint === legacyEntrypoint || project.entrypoint == null)) {
+    files = files.map((file) =>
+      file.name === legacyEntrypoint ? { ...file, name: expectedEntrypoint } : file
+    );
+    entrypoint = expectedEntrypoint;
+  } else if (expectedFile) {
+    entrypoint = expectedEntrypoint;
+  }
+
+  const hasEntrypoint = files.some((file) => file.name === entrypoint);
+  if (!hasEntrypoint) {
+    return createProjectFromTemplate(algorithmId, language);
+  }
+
+  const activeFileId = files.some((file) => file.id === project.activeFileId)
+    ? project.activeFileId
+    : files[0].id;
+
+  return {
+    entrypoint,
+    activeFileId,
+    files
+  };
+}
+
+function fallbackId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function generateFileId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return fallbackId();
+}
+
+function nextFileName(project: CodeProject, language: Language): string {
+  const ext = fileExtensionForLanguage(language);
+  const used = new Set(project.files.map((file) => file.name));
+
+  let counter = 1;
+  while (used.has(`module_${counter}${ext}`)) {
+    counter += 1;
+  }
+
+  return `module_${counter}${ext}`;
+}
+
+function starterFileContent(language: Language): string {
+  if (language === "python") {
+    return [
+      "def helper():",
+      "    return None",
+      ""
+    ].join("\n");
+  }
+
+  return [
+    "export function helper() {",
+    "  return null;",
+    "}",
+    ""
+  ].join("\n");
+}
+
+function migrateLegacyCodeMap(codeMap: LegacyCodeMap | undefined): ProjectMap {
+  const initial = buildInitialProjectMap();
+  if (!codeMap) {
+    return initial;
+  }
+
+  for (const algorithm of algorithms) {
+    for (const language of ["ts", "js", "python"] as const) {
+      const legacyCode = codeMap[algorithm.id]?.[language];
+      if (!legacyCode) {
+        continue;
+      }
+
+      const project = createProjectFromTemplate(algorithm.id, language);
+      project.files[0].content = legacyCode;
+      initial[algorithm.id][language] = project;
+    }
+  }
+
+  return initial;
+}
+
 export const useAppStore = create<AppStore>()(
   persist(
     (set) => ({
@@ -54,22 +213,18 @@ export const useAppStore = create<AppStore>()(
       selectedAlgorithmId: "stalin-sort",
       selectedLanguage: "ts",
       speed: 1,
-      codeMap: buildInitialCodeMap(),
+      soundPreset: "punchy",
+      editorWrapMode: "auto",
+      editorFontMode: "md",
+      projectMap: buildInitialProjectMap(),
       inputMap: buildInitialInputMap(),
       setLocale: (locale) => set({ locale }),
       setAlgorithm: (selectedAlgorithmId) => set({ selectedAlgorithmId }),
       setLanguage: (selectedLanguage) => set({ selectedLanguage }),
       setSpeed: (speed) => set({ speed }),
-      setCode: (algorithmId, language, code) =>
-        set((state) => ({
-          codeMap: {
-            ...state.codeMap,
-            [algorithmId]: {
-              ...state.codeMap[algorithmId],
-              [language]: code
-            }
-          }
-        })),
+      setSoundPreset: (soundPreset) => set({ soundPreset }),
+      setEditorWrapMode: (editorWrapMode) => set({ editorWrapMode }),
+      setEditorFontMode: (editorFontMode) => set({ editorFontMode }),
       setInputText: (algorithmId, inputText) =>
         set((state) => ({
           inputMap: {
@@ -77,53 +232,171 @@ export const useAppStore = create<AppStore>()(
             [algorithmId]: inputText
           }
         })),
-      hydrateFromShare: (payload) =>
+      setActiveFile: (algorithmId, language, fileId) =>
         set((state) => {
-          const codeMap = {
-            ...state.codeMap,
-            [payload.algorithmId]: {
-              ...state.codeMap[payload.algorithmId],
-              [payload.language]: payload.code
+          const project = ensureProjectShape(state.projectMap[algorithmId]?.[language], algorithmId, language);
+          if (!project.files.some((file) => file.id === fileId)) {
+            return {};
+          }
+
+          return {
+            projectMap: {
+              ...state.projectMap,
+              [algorithmId]: {
+                ...state.projectMap[algorithmId],
+                [language]: {
+                  ...project,
+                  activeFileId: fileId
+                }
+              }
             }
           };
+        }),
+      updateFileContent: (algorithmId, language, fileId, content) =>
+        set((state) => {
+          const project = ensureProjectShape(state.projectMap[algorithmId]?.[language], algorithmId, language);
 
-          const inputMap = {
-            ...state.inputMap,
-            [payload.algorithmId]: payload.inputText
+          return {
+            projectMap: {
+              ...state.projectMap,
+              [algorithmId]: {
+                ...state.projectMap[algorithmId],
+                [language]: {
+                  ...project,
+                  files: project.files.map((file) =>
+                    file.id === fileId ? { ...file, content } : file
+                  )
+                }
+              }
+            }
+          };
+        }),
+      addFile: (algorithmId, language) =>
+        set((state) => {
+          const project = ensureProjectShape(state.projectMap[algorithmId]?.[language], algorithmId, language);
+          const file: ProjectFile = {
+            id: generateFileId(),
+            name: nextFileName(project, language),
+            content: starterFileContent(language)
           };
 
           return {
-            locale: payload.locale,
-            selectedAlgorithmId: payload.algorithmId,
-            selectedLanguage: payload.language,
-            codeMap,
-            inputMap
+            projectMap: {
+              ...state.projectMap,
+              [algorithmId]: {
+                ...state.projectMap[algorithmId],
+                [language]: {
+                  ...project,
+                  activeFileId: file.id,
+                  files: [...project.files, file]
+                }
+              }
+            }
           };
-        })
+        }),
+      removeFile: (algorithmId, language, fileId) =>
+        set((state) => {
+          const project = ensureProjectShape(state.projectMap[algorithmId]?.[language], algorithmId, language);
+          const fileToRemove = project.files.find((file) => file.id === fileId);
+
+          if (!fileToRemove || fileToRemove.name === project.entrypoint) {
+            return {};
+          }
+
+          const nextFiles = project.files.filter((file) => file.id !== fileId);
+          if (nextFiles.length === 0) {
+            return {};
+          }
+
+          const nextActiveFileId =
+            project.activeFileId === fileId ? nextFiles[0].id : project.activeFileId;
+
+          return {
+            projectMap: {
+              ...state.projectMap,
+              [algorithmId]: {
+                ...state.projectMap[algorithmId],
+                [language]: {
+                  ...project,
+                  activeFileId: nextActiveFileId,
+                  files: nextFiles
+                }
+              }
+            }
+          };
+        }),
+      hydrateFromShare: (payload) =>
+        set((state) => ({
+          locale: payload.locale,
+          selectedAlgorithmId: payload.algorithmId,
+          selectedLanguage: payload.language,
+          soundPreset: payload.soundPreset,
+          projectMap: {
+            ...state.projectMap,
+            [payload.algorithmId]: {
+              ...state.projectMap[payload.algorithmId],
+              [payload.language]: ensureProjectShape(
+                cloneProject(payload.project),
+                payload.algorithmId,
+                payload.language
+              )
+            }
+          },
+          inputMap: {
+            ...state.inputMap,
+            [payload.algorithmId]: payload.inputText
+          }
+        }))
     }),
     {
       name: "algoriui-store",
+      version: 2,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         locale: state.locale,
         selectedAlgorithmId: state.selectedAlgorithmId,
         selectedLanguage: state.selectedLanguage,
         speed: state.speed,
-        codeMap: state.codeMap,
+        soundPreset: state.soundPreset,
+        editorWrapMode: state.editorWrapMode,
+        editorFontMode: state.editorFontMode,
+        projectMap: state.projectMap,
         inputMap: state.inputMap
-      })
+      }),
+      migrate: (persistedState) => {
+        const state = (persistedState ?? {}) as Partial<AppStore> & {
+          codeMap?: LegacyCodeMap;
+        };
+
+        return {
+          locale: state.locale ?? "pt",
+          selectedAlgorithmId: state.selectedAlgorithmId ?? "stalin-sort",
+          selectedLanguage: state.selectedLanguage ?? "ts",
+          speed: state.speed ?? 1,
+          soundPreset: state.soundPreset ?? "punchy",
+          editorWrapMode: state.editorWrapMode ?? "auto",
+          editorFontMode: state.editorFontMode ?? "md",
+          inputMap: state.inputMap ?? buildInitialInputMap(),
+          projectMap: state.projectMap ?? migrateLegacyCodeMap(state.codeMap)
+        };
+      }
     }
   )
 );
 
-export function ensureCode(
-  codeMap: CodeMap,
+export function ensureProject(
+  projectMap: ProjectMap,
   algorithmId: AlgorithmId,
   language: Language
-): string {
-  return codeMap[algorithmId]?.[language] ?? defaultCode(algorithmId, language);
+): CodeProject {
+  return ensureProjectShape(projectMap[algorithmId]?.[language], algorithmId, language);
 }
 
-export function ensureInput(inputMap: InputMap, algorithmId: AlgorithmId): string {
-  return inputMap[algorithmId] ?? defaultInputText(algorithmId);
+export function findActiveFile(project: CodeProject): ProjectFile {
+  return project.files.find((file) => file.id === project.activeFileId) ?? project.files[0];
+}
+
+export function canRemoveFile(project: CodeProject, fileId: string): boolean {
+  const file = project.files.find((entry) => entry.id === fileId);
+  return Boolean(file && file.name !== project.entrypoint);
 }

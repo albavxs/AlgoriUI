@@ -16,9 +16,24 @@ export type TraceEvent = {
   [key: string]: unknown;
 };
 
+export type ProjectFile = {
+  id: string;
+  name: string;
+  content: string;
+};
+
+export type CodeProject = {
+  files: ProjectFile[];
+  activeFileId: string;
+  entrypoint: string;
+};
+
+export type SoundPreset = "soft" | "balanced" | "punchy";
+
 export type ExecutionRequest = {
   language: Language;
-  source: string;
+  files: ProjectFile[];
+  entrypoint: string;
   input: unknown;
   timeoutMs: number;
 };
@@ -49,7 +64,8 @@ export type SharePayload = {
   version: 1;
   algorithmId: AlgorithmId;
   language: Language;
-  code: string;
+  project: CodeProject;
   inputText: string;
   locale: Locale;
+  soundPreset: SoundPreset;
 };
