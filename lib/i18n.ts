@@ -1,0 +1,87 @@
+import type { Locale } from "@/lib/types";
+
+export const messages = {
+  pt: {
+    appTitle: "AlgoriUI",
+    appSubtitle: "Escreva algoritmos e veja cada passo ganhar vida.",
+    run: "Executar",
+    pause: "Pausar",
+    resume: "Continuar",
+    stepBack: "Voltar",
+    stepForward: "Avançar",
+    reset: "Resetar",
+    speed: "Velocidade",
+    language: "Linguagem",
+    algorithm: "Algoritmo",
+    input: "Entrada (JSON)",
+    output: "Saída",
+    timeline: "Linha do tempo",
+    copyShare: "Copiar link",
+    exportJson: "Exportar JSON",
+    importJson: "Importar JSON",
+    running: "Executando...",
+    idle: "Pronto",
+    editor: "Editor",
+    visualization: "Visualização",
+    event: "Evento",
+    noEvents: "Execute o código para gerar animação.",
+    copied: "Link copiado para a área de transferência.",
+    copiedFail: "Não foi possível copiar automaticamente.",
+    invalidInput: "JSON inválido na entrada.",
+    executionError: "Erro de execução",
+    loadFromShare: "Projeto carregado do link compartilhado.",
+    sound: "Som",
+    soundOn: "Ligado",
+    soundOff: "Desligado",
+    volume: "Volume",
+    controls: "Controles",
+    advanced: "Avançado",
+    close: "Fechar"
+  },
+  en: {
+    appTitle: "AlgoriUI",
+    appSubtitle: "Write algorithms and watch every step come alive.",
+    run: "Run",
+    pause: "Pause",
+    resume: "Resume",
+    stepBack: "Back",
+    stepForward: "Forward",
+    reset: "Reset",
+    speed: "Speed",
+    language: "Language",
+    algorithm: "Algorithm",
+    input: "Input (JSON)",
+    output: "Output",
+    timeline: "Timeline",
+    copyShare: "Copy link",
+    exportJson: "Export JSON",
+    importJson: "Import JSON",
+    running: "Running...",
+    idle: "Ready",
+    editor: "Editor",
+    visualization: "Visualization",
+    event: "Event",
+    noEvents: "Run your code to generate animation.",
+    copied: "Link copied to clipboard.",
+    copiedFail: "Unable to copy automatically.",
+    invalidInput: "Invalid input JSON.",
+    executionError: "Execution error",
+    loadFromShare: "Project loaded from shared URL.",
+    sound: "Sound",
+    soundOn: "On",
+    soundOff: "Off",
+    volume: "Volume",
+    controls: "Controls",
+    advanced: "Advanced",
+    close: "Close"
+  }
+} as const;
+
+export const localeLabel: Record<Locale, string> = {
+  pt: "PT",
+  en: "EN"
+};
+
+export function t(locale: Locale, key: keyof (typeof messages)["pt"]): string {
+  return messages[locale][key] ?? messages.pt[key];
+}

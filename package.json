@@ -1,0 +1,35 @@
+{
+  "name": "algoriui",
+  "version": "1.0.0",
+  "description": "AlgoriUI - visualizador de algoritmos com TypeScript, JavaScript e Python",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "next typegen && tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "framer-motion": "^12.38.0",
+    "lz-string": "^1.5.0",
+    "monaco-editor": "^0.55.1",
+    "next": "^15.5.14",
+    "pyodide": "^0.29.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "typescript": "^5.9.3",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "tailwindcss": "^4.2.2"
+  }
+}
