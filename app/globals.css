@@ -570,6 +570,9 @@ input[type="range"]:disabled {
 .file-name {
   font-family: "JetBrains Mono", monospace;
   font-size: 0.85rem;
+  max-width: 15ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -952,9 +955,17 @@ input[type="range"]:disabled {
 
 @media (max-width: 640px) {
   .window-header {
+    position: relative;
     flex-direction: row;
     align-items: center;
     padding: 8px 8px 6px;
+  }
+
+  .window-tabs {
+    width: 100%;
+    padding-right: 46px;
+    scroll-padding-inline: 12px;
+    overscroll-behavior-x: contain;
   }
 
   .file-tab-inner {
@@ -972,9 +983,14 @@ input[type="range"]:disabled {
 
   .file-name {
     font-size: 0.78rem;
+    max-width: 11ch;
   }
 
   .editor-toolbar {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 4;
     width: auto;
     justify-content: flex-end;
     flex: 0 0 auto;

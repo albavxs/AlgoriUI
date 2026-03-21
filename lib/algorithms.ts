@@ -80,6 +80,7 @@ async function run(input: number[]) {
     return [];
   }
 
+  emitStep({ t: "stalin-start", arr: [...arr], kept: [] });
   let maxSoFar = -Infinity;
 
   for (let i = 0; i < arr.length; i++) {
@@ -102,7 +103,7 @@ async function run(input: number[]) {
     }
   }
 
-  emitStep({ t: "done", arr: [...kept] });
+  emitStep({ t: "done", arr: [...kept], kept: [...kept] });
   return kept;
 }
 `;
@@ -117,6 +118,7 @@ async function run(input) {
     return [];
   }
 
+  emitStep({ t: "stalin-start", arr: [...arr], kept: [] });
   let maxSoFar = -Infinity;
 
   for (let i = 0; i < arr.length; i++) {
@@ -139,7 +141,7 @@ async function run(input) {
     }
   }
 
-  emitStep({ t: "done", arr: [...kept] });
+  emitStep({ t: "done", arr: [...kept], kept: [...kept] });
   return kept;
 }
 `;
@@ -153,6 +155,7 @@ def run(input_data):
         emitStep({"t": "done", "arr": []})
         return []
 
+    emitStep({"t": "stalin-start", "arr": list(arr), "kept": []})
     max_so_far = float("-inf")
 
     for i, value in enumerate(arr):
@@ -171,88 +174,95 @@ def run(input_data):
             kept.append(value)
             max_so_far = value
 
-    emitStep({"t": "done", "arr": list(kept)})
+    emitStep({"t": "done", "arr": list(kept), "kept": list(kept)})
     return kept
 `;
 
-const binaryTs = `
-async function run(input: { arr: number[]; target: number }) {
-  const arr = [...input.arr];
-  const target = input.target;
-  let left = 0;
-  let right = arr.length - 1;
+const selectionTs = `
+function emitArray(arr: number[], meta: Record<string, unknown> = {}) {
+  emitStep({ t: "array", arr: [...arr], ...meta });
+}
 
-  while (left <= right) {
-    const mid = Math.floor((left + right) / 2);
-    emitStep({ t: "search-window", arr: [...arr], left, right, mid, target });
+async function run(input: number[]) {
+  const arr = [...input];
+  emitArray(arr, { phase: "start" });
 
-    if (arr[mid] === target) {
-      emitStep({ t: "search-found", arr: [...arr], left, right, mid, target });
-      return mid;
+  for (let i = 0; i < arr.length; i++) {
+    let minIndex = i;
+
+    for (let j = i + 1; j < arr.length; j++) {
+      emitArray(arr, { t: "compare", i: minIndex, j });
+      if (arr[j] < arr[minIndex]) {
+        minIndex = j;
+      }
     }
 
-    if (arr[mid] < target) {
-      left = mid + 1;
-    } else {
-      right = mid - 1;
+    if (minIndex !== i) {
+      [arr[i], arr[minIndex]] = [arr[minIndex], arr[i]];
+      emitArray(arr, { t: "swap", i, j: minIndex });
     }
   }
 
-  emitStep({ t: "search-miss", arr: [...arr], left, right, target });
-  return -1;
+  emitArray(arr, { t: "done" });
+  return arr;
 }
 `;
 
-const binaryJs = `
+const selectionJs = `
+function emitArray(arr, meta = {}) {
+  emitStep({ t: "array", arr: [...arr], ...meta });
+}
+
 async function run(input) {
-  const arr = [...input.arr];
-  const target = input.target;
-  let left = 0;
-  let right = arr.length - 1;
+  const arr = [...input];
+  emitArray(arr, { phase: "start" });
 
-  while (left <= right) {
-    const mid = Math.floor((left + right) / 2);
-    emitStep({ t: "search-window", arr: [...arr], left, right, mid, target });
+  for (let i = 0; i < arr.length; i++) {
+    let minIndex = i;
 
-    if (arr[mid] === target) {
-      emitStep({ t: "search-found", arr: [...arr], left, right, mid, target });
-      return mid;
+    for (let j = i + 1; j < arr.length; j++) {
+      emitArray(arr, { t: "compare", i: minIndex, j });
+      if (arr[j] < arr[minIndex]) {
+        minIndex = j;
+      }
     }
 
-    if (arr[mid] < target) {
-      left = mid + 1;
-    } else {
-      right = mid - 1;
+    if (minIndex !== i) {
+      [arr[i], arr[minIndex]] = [arr[minIndex], arr[i]];
+      emitArray(arr, { t: "swap", i, j: minIndex });
     }
   }
 
-  emitStep({ t: "search-miss", arr: [...arr], left, right, target });
-  return -1;
+  emitArray(arr, { t: "done" });
+  return arr;
 }
 `;
 
-const binaryPy = `
+const selectionPy = `
+def emit_array(arr, meta=None):
+    meta = meta or {}
+    event = {"t": "array", "arr": list(arr)}
+    event.update(meta)
+    emitStep(event)
+
 def run(input_data):
-    arr = list(input_data["arr"])
-    target = input_data["target"]
-    left = 0
-    right = len(arr) - 1
+    arr = list(input_data)
+    emit_array(arr, {"phase": "start"})
 
-    while left <= right:
-        mid = (left + right) // 2
-        emitStep({"t": "search-window", "arr": list(arr), "left": left, "right": right, "mid": mid, "target": target})
+    for i in range(len(arr)):
+        min_index = i
 
-        if arr[mid] == target:
-            emitStep({"t": "search-found", "arr": list(arr), "left": left, "right": right, "mid": mid, "target": target})
-            return mid
+        for j in range(i + 1, len(arr)):
+            emit_array(arr, {"t": "compare", "i": min_index, "j": j})
+            if arr[j] < arr[min_index]:
+                min_index = j
 
-        if arr[mid] < target:
-            left = mid + 1
-        else:
-            right = mid - 1
+        if min_index != i:
+            arr[i], arr[min_index] = arr[min_index], arr[i]
+            emit_array(arr, {"t": "swap", "i": i, "j": min_index})
 
-    emitStep({"t": "search-miss", "arr": list(arr), "left": left, "right": right, "target": target})
-    return -1
+    emit_array(arr, {"t": "done"})
+    return arr
 `;
 
 const bfsTs = `
@@ -275,6 +285,8 @@ async function run(input: Input) {
   const queue: string[] = [start];
   const order: string[] = [];
   visited.add(start);
+
+  emitStep({ t: "graph-start", nodes, edges, frontier: [start], visited: [], order: [], mode: "bfs" });
 
   while (queue.length) {
     const current = queue.shift()!;
@@ -322,6 +334,8 @@ async function run(input) {
   const order = [];
   visited.add(start);
 
+  emitStep({ t: "graph-start", nodes, edges, frontier: [start], visited: [], order: [], mode: "bfs" });
+
   while (queue.length) {
     const current = queue.shift();
     order.push(current);
@@ -367,6 +381,8 @@ def run(input_data):
     queue = [start]
     order = []
 
+    emitStep({"t": "graph-start", "nodes": nodes, "edges": [list(e) for e in edges], "frontier": [start], "visited": [], "order": [], "mode": "bfs"})
+
     while queue:
         current = queue.pop(0)
         order.append(current)
@@ -409,6 +425,8 @@ async function run(input: Input) {
   const visited = new Set<string>();
   const stack: string[] = [start];
   const order: string[] = [];
+
+  emitStep({ t: "graph-start", nodes, edges, frontier: [start], visited: [], order: [], mode: "dfs" });
 
   while (stack.length) {
     const current = stack.pop()!;
@@ -458,6 +476,8 @@ async function run(input) {
   const stack = [start];
   const order = [];
 
+  emitStep({ t: "graph-start", nodes, edges, frontier: [start], visited: [], order: [], mode: "dfs" });
+
   while (stack.length) {
     const current = stack.pop();
     if (visited.has(current)) continue;
@@ -505,6 +525,8 @@ def run(input_data):
     visited = set()
     stack = [start]
     order = []
+
+    emitStep({"t": "graph-start", "nodes": nodes, "edges": [list(e) for e in edges], "frontier": [start], "visited": [], "order": [], "mode": "dfs"})
 
     while stack:
         current = stack.pop()
@@ -574,25 +596,22 @@ export const algorithms: AlgorithmDefinition[] = [
     }
   },
   {
-    id: "binary-search",
-    category: "search",
+    id: "selection-sort",
+    category: "sorting",
     title: {
-      pt: "Busca Binária",
-      en: "Binary Search"
+      pt: "Selection Sort",
+      en: "Selection Sort"
     },
     subtitle: {
-      pt: "Reduz o intervalo pela metade a cada passo.",
-      en: "Halves the search range at each step."
+      pt: "Seleciona o menor restante e leva para a frente.",
+      en: "Selects the smallest remaining value and moves it forward."
     },
-    complexity: { time: "O(log n)", space: "O(1)" },
-    defaultInput: {
-      arr: [1, 3, 5, 7, 9, 12, 14, 17, 20],
-      target: 14
-    },
+    complexity: { time: "O(n²)", space: "O(1)" },
+    defaultInput: [9, 4, 7, 1, 6, 3, 8, 2, 5],
     templates: {
-      ts: binaryTs,
-      js: binaryJs,
-      python: binaryPy
+      ts: selectionTs,
+      js: selectionJs,
+      python: selectionPy
     }
   },
   {
@@ -660,6 +679,14 @@ export const languageLabel: Record<Language, string> = {
   js: "JavaScript",
   python: "Python"
 };
+
+export function canonicalAlgorithmId(id: string): AlgorithmId {
+  if (id === "binary-search") {
+    return "selection-sort";
+  }
+
+  return (algorithms.find((algorithm) => algorithm.id === id)?.id ?? algorithms[0].id) as AlgorithmId;
+}
 
 export function algorithmById(id: AlgorithmId): AlgorithmDefinition {
   return algorithms.find((algorithm) => algorithm.id === id) ?? algorithms[0];

@@ -15,10 +15,81 @@ function sanitizeEvents(events: unknown): TraceEvent[] {
     return [];
   }
 
-  return events
+  const safeEvents = events
     .map((event) => traceEventSchema.safeParse(event))
     .filter((item) => item.success)
     .map((item) => item.data as TraceEvent);
+
+  return normalizeTrace(safeEvents);
+}
+
+function normalizeTrace(events: TraceEvent[]): TraceEvent[] {
+  if (events.length === 0) {
+    return events;
+  }
+
+  const first = events[0];
+  const firstType = String(first?.t ?? "");
+  const firstArray = Array.isArray(first?.arr) ? first.arr.filter((value) => typeof value === "number") : [];
+  const firstNodes = Array.isArray(first?.nodes) ? first.nodes.filter((value) => typeof value === "string") : [];
+  const neutralSearchStart =
+    firstArray.length > 0
+      ? {
+          t: "search-start",
+          arr: [...firstArray],
+          target: first?.target
+        }
+      : null;
+
+  if (firstType === "stalin-step" && firstArray.length > 0) {
+    return [
+      {
+        t: "stalin-start",
+        arr: [...firstArray],
+        kept: []
+      },
+      ...events
+    ];
+  }
+
+  if (
+    firstArray.length > 0 &&
+    (firstType === "search-window" || firstType === "search-found" || firstType === "search-miss")
+  ) {
+    return neutralSearchStart ? [neutralSearchStart, ...events] : events;
+  }
+
+  if (firstType === "search-start" && neutralSearchStart) {
+    return [neutralSearchStart, ...events.slice(1)];
+  }
+
+  if (firstArray.length > 0 && (firstType === "compare" || firstType === "swap" || firstType === "done")) {
+    return [
+      {
+        t: "array-start",
+        arr: [...firstArray],
+        phase: "start"
+      },
+      ...events
+    ];
+  }
+
+  if (firstNodes.length > 0 && (firstType === "graph-state" || firstType === "done")) {
+    return [
+      {
+        t: "graph-start",
+        nodes: [...firstNodes],
+        edges: Array.isArray(first?.edges) ? first.edges : [],
+        frontier: [],
+        visited: [],
+        order: [],
+        mode: first?.mode
+      },
+      ...events
+    ];
+  }
+
+  return events;
 }
 
 function appendEntrypointShim(source: string): string {
@@ -81,4 +152,3 @@ export async function executeCode(request: ExecutionRequest): Promise<ExecutionR
     events: sanitizeEvents(result.events)
   };
 }
-

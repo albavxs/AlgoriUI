@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
 import {
+  canonicalAlgorithmId,
   algorithms,
   createProjectFromTemplate,
   defaultInputText,
@@ -33,6 +34,35 @@ type ShareHydratePayload = {
 type LegacyCodeMap = Record<AlgorithmId, Record<Language, string>>;
 export type EditorWrapMode = "auto" | "wrap" | "nowrap";
 export type EditorFontMode = "sm" | "md" | "lg";
+
+function mergeInputMap(inputMap: Partial<InputMap> | undefined): InputMap {
+  const initial = buildInitialInputMap();
+  if (!inputMap) {
+    return initial;
+  }
+
+  return algorithms.reduce((acc, algorithm) => {
+    acc[algorithm.id] = inputMap[algorithm.id] ?? initial[algorithm.id];
+    return acc;
+  }, {} as InputMap);
+}
+
+function mergeProjectMap(projectMap: Partial<ProjectMap> | undefined): ProjectMap {
+  const initial = buildInitialProjectMap();
+  if (!projectMap) {
+    return initial;
+  }
+
+  return algorithms.reduce((acc, algorithm) => {
+    const current = projectMap[algorithm.id];
+    acc[algorithm.id] = {
+      ts: ensureProjectShape(current?.ts, algorithm.id, "ts"),
+      js: ensureProjectShape(current?.js, algorithm.id, "js"),
+      python: ensureProjectShape(current?.python, algorithm.id, "python")
+    };
+    return acc;
+  }, {} as ProjectMap);
+}
 
 export type AppStore = {
   locale: Locale;
@@ -326,31 +356,35 @@ export const useAppStore = create<AppStore>()(
           };
         }),
       hydrateFromShare: (payload) =>
-        set((state) => ({
-          locale: payload.locale,
-          selectedAlgorithmId: payload.algorithmId,
-          selectedLanguage: payload.language,
-          soundPreset: payload.soundPreset,
-          projectMap: {
-            ...state.projectMap,
-            [payload.algorithmId]: {
-              ...state.projectMap[payload.algorithmId],
-              [payload.language]: ensureProjectShape(
-                cloneProject(payload.project),
-                payload.algorithmId,
-                payload.language
-              )
+        set((state) => {
+          const algorithmId = canonicalAlgorithmId(String(payload.algorithmId));
+          const isLegacyBinarySearch = String(payload.algorithmId) === "binary-search";
+          const project = isLegacyBinarySearch
+            ? createProjectFromTemplate(algorithmId, payload.language)
+            : ensureProjectShape(cloneProject(payload.project), algorithmId, payload.language);
+
+          return {
+            locale: payload.locale,
+            selectedAlgorithmId: algorithmId,
+            selectedLanguage: payload.language,
+            soundPreset: payload.soundPreset,
+            projectMap: {
+              ...state.projectMap,
+              [algorithmId]: {
+                ...state.projectMap[algorithmId],
+                [payload.language]: project
+              }
+            },
+            inputMap: {
+              ...state.inputMap,
+              [algorithmId]: isLegacyBinarySearch ? defaultInputText(algorithmId) : payload.inputText
             }
-          },
-          inputMap: {
-            ...state.inputMap,
-            [payload.algorithmId]: payload.inputText
-          }
-        }))
+          };
+        })
     }),
     {
       name: "algoriui-store",
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         locale: state.locale,
@@ -366,18 +400,26 @@ export const useAppStore = create<AppStore>()(
       migrate: (persistedState) => {
         const state = (persistedState ?? {}) as Partial<AppStore> & {
           codeMap?: LegacyCodeMap;
+          selectedAlgorithmId?: string;
+          inputMap?: Partial<InputMap> & Record<string, string>;
+          projectMap?: Partial<ProjectMap> & Record<string, unknown>;
         };
+
+        const selectedAlgorithmId = canonicalAlgorithmId(state.selectedAlgorithmId ?? "stalin-sort");
+        const projectMap = state.projectMap
+          ? mergeProjectMap(state.projectMap as Partial<ProjectMap>)
+          : migrateLegacyCodeMap(state.codeMap);
 
         return {
           locale: state.locale ?? "pt",
-          selectedAlgorithmId: state.selectedAlgorithmId ?? "stalin-sort",
+          selectedAlgorithmId,
           selectedLanguage: state.selectedLanguage ?? "ts",
           speed: state.speed ?? 1,
           soundPreset: state.soundPreset ?? "punchy",
           editorWrapMode: state.editorWrapMode ?? "auto",
           editorFontMode: state.editorFontMode ?? "md",
-          inputMap: state.inputMap ?? buildInitialInputMap(),
-          projectMap: state.projectMap ?? migrateLegacyCodeMap(state.codeMap)
+          inputMap: mergeInputMap(state.inputMap),
+          projectMap
         };
       }
     }

@@ -7,7 +7,7 @@ export type AlgorithmCategory = "sorting" | "search" | "graph";
 export type AlgorithmId =
   | "bubble-sort"
   | "stalin-sort"
-  | "binary-search"
+  | "selection-sort"
   | "bfs"
   | "dfs";
 

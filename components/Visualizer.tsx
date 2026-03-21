@@ -25,6 +25,54 @@ function currentEvent(events: TraceEvent[], index: number): TraceEvent | null {
   return events[Math.max(0, Math.min(index, events.length - 1))] ?? null;
 }
 
+function hasArrayData(event: TraceEvent | null): boolean {
+  return safeArray(event?.arr).length > 0;
+}
+
+function findPreviousArrayEvent(events: TraceEvent[], index: number): TraceEvent | null {
+  if (index < 0 || events.length === 0) {
+    return null;
+  }
+
+  for (let cursor = Math.max(0, Math.min(index, events.length - 1)); cursor >= 0; cursor -= 1) {
+    const candidate = events[cursor] ?? null;
+    if (hasArrayData(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+function resolveSortingEvent(events: TraceEvent[], index: number): TraceEvent | null {
+  const event = currentEvent(events, index);
+  if (!event) {
+    return null;
+  }
+
+  const arr = safeArray(event.arr);
+  const kept = safeArray(event.kept);
+  const previous = findPreviousArrayEvent(events, index - 1);
+  const previousArr = safeArray(previous?.arr);
+
+  if (event.t === "done" && kept.length > 0) {
+    return {
+      ...event,
+      arr: kept
+    };
+  }
+
+  if (!arr.length && previousArr.length > 0) {
+    return {
+      ...previous,
+      ...event,
+      arr: previousArr
+    };
+  }
+
+  return event;
+}
+
 function hasGraphData(event: TraceEvent | null): boolean {
   return safeStringArray(event?.nodes).length > 0;
 }
@@ -125,10 +173,17 @@ function FinaleGlow() {
 }
 
 function SortingVisualizer({ event }: { event: TraceEvent | null }) {
-  const arr = safeArray(event?.arr);
+  const rawArr = safeArray(event?.arr);
   const kept = safeArray(event?.kept);
-  const i = typeof event?.i === "number" ? event.i : -1;
-  const j = typeof event?.j === "number" ? event.j : -1;
+  const rawI = typeof event?.i === "number" ? event.i : -1;
+  const rawJ = typeof event?.j === "number" ? event.j : -1;
+  const isStalinStep = event?.t === "stalin-step";
+  const arr = useMemo(
+    () => (isStalinStep && rawI >= 0 ? [...kept, ...rawArr.slice(rawI)] : rawArr),
+    [isStalinStep, kept, rawArr, rawI]
+  );
+  const i = isStalinStep && rawI >= 0 ? kept.length : rawI;
+  const j = rawJ;
   const max = arr.length ? Math.max(...arr, 1) : 1;
   const completionOrder = useMemo(
     () => (event?.t === "done" ? arr.map((_, index) => index) : []),
@@ -145,23 +200,29 @@ function SortingVisualizer({ event }: { event: TraceEvent | null }) {
     <div className="bars-wrap">
       {isCompletionFinished ? <FinaleGlow /> : null}
       {arr.map((value, index) => {
-        const inKept = kept.includes(value) && event?.t === "stalin-step";
+        const inKept = isStalinStep && index < kept.length;
         const isCompare = event?.t === "compare" && (index === i || index === j);
         const isSwap = event?.t === "swap" && (index === i || index === j);
-        const isScanning = event?.t === "stalin-step" && index === i;
+        const isScanning = isStalinStep && index === i;
+        const isAcceptedCurrent = isStalinStep && index === i && Boolean(event?.accepted);
+        const isRejectedCurrent = isStalinStep && index === i && !Boolean(event?.accepted);
         const isCompletionPulse = activeItem === index;
         const isCompleted = event?.t === "done" && index < completionCount;
-        const color = inKept
-          ? "#32d74b"
-          : isCompletionPulse
-            ? "#a7f7b8"
-            : isCompleted
-              ? "#32d74b"
-              : isSwap
-            ? "#ffd60a"
-            : isCompare || isScanning
-              ? "#ff453a"
-              : "#22d3ee";
+        const color = isCompletionPulse
+          ? "#a7f7b8"
+          : isCompleted
+            ? "#32d74b"
+            : isSwap
+              ? "#ffd60a"
+              : isCompare
+                ? "#ff453a"
+                : isAcceptedCurrent
+                  ? "#32d74b"
+                  : isRejectedCurrent
+                    ? "#ff453a"
+                    : inKept
+                      ? "#32d74b"
+                      : "#22d3ee";
 
         return (
           <motion.div
@@ -194,8 +255,8 @@ function SearchVisualizer({ event }: { event: TraceEvent | null }) {
   const left = typeof event?.left === "number" ? event.left : -1;
   const right = typeof event?.right === "number" ? event.right : -1;
   const mid = typeof event?.mid === "number" ? event.mid : -1;
-  const target = typeof event?.target === "number" ? event.target : null;
   const max = arr.length ? Math.max(...arr, 1) : 1;
+  const isInitialFrame = event?.t === "search-start";
   const isTerminal = event?.t === "search-found" || event?.t === "search-miss";
   const completionOrder = useMemo(
     () => (isTerminal ? arr.map((_, index) => index) : []),
@@ -215,11 +276,13 @@ function SearchVisualizer({ event }: { event: TraceEvent | null }) {
         const isCompletionPulse = activeItem === index;
         const isCompleted = isTerminal && index < completionCount;
         let color = "#9ca3af";
-        if (index >= left && index <= right) color = "#22d3ee";
-        if (index === mid) color = "#ffd60a";
-        if (event?.t === "search-found" && index === mid) color = "#32d74b";
-        if (isCompleted) color = "#32d74b";
-        if (isCompletionPulse) color = "#b7ffc3";
+        if (!isInitialFrame) {
+          if (index >= left && index <= right) color = "#22d3ee";
+          if (mid >= 0 && index === mid) color = "#ffd60a";
+          if (event?.t === "search-found" && index === mid) color = "#32d74b";
+          if (isCompleted) color = "#32d74b";
+          if (isCompletionPulse) color = "#b7ffc3";
+        }
 
         return (
           <motion.div
@@ -243,9 +306,6 @@ function SearchVisualizer({ event }: { event: TraceEvent | null }) {
           />
         );
       })}
-      <div className="viz-caption">
-        left={left} right={right} mid={mid} {target !== null ? `target=${target}` : ""}
-      </div>
     </div>
   );
 }
@@ -390,7 +450,11 @@ function GraphVisualizer({ event, events, currentIndex }: { event: TraceEvent | 
 
 export function Visualizer({ category, events, currentIndex, emptyLabel }: VisualizerProps) {
   const event =
-    category === "graph" ? resolveGraphEvent(events, currentIndex) : currentEvent(events, currentIndex);
+    category === "graph"
+      ? resolveGraphEvent(events, currentIndex)
+      : category === "sorting"
+        ? resolveSortingEvent(events, currentIndex)
+        : currentEvent(events, currentIndex);
 
   if (!event) {
     return <div className="viz-empty">{emptyLabel}</div>;

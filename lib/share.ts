@@ -1,6 +1,6 @@
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from "lz-string";
 
-import { createProjectFromTemplate } from "@/lib/algorithms";
+import { canonicalAlgorithmId, createProjectFromTemplate, defaultInputText } from "@/lib/algorithms";
 import type { SharePayload } from "@/lib/types";
 
 export function encodeShare(payload: SharePayload): string {
@@ -21,10 +21,14 @@ export function decodeShare(encoded: string): SharePayload | null {
       return null;
     }
 
-    if (parsed.project) {
+    const rawAlgorithmId = String(parsed.algorithmId);
+    const algorithmId = canonicalAlgorithmId(rawAlgorithmId);
+    const isLegacyBinarySearch = rawAlgorithmId === "binary-search";
+
+    if (parsed.project && !isLegacyBinarySearch) {
       return {
         version: 1,
-        algorithmId: parsed.algorithmId,
+        algorithmId,
         language: parsed.language,
         project: parsed.project,
         inputText: parsed.inputText ?? "",
@@ -33,17 +37,29 @@ export function decodeShare(encoded: string): SharePayload | null {
       };
     }
 
-    if (typeof parsed.code === "string") {
-      const project = createProjectFromTemplate(parsed.algorithmId, parsed.language);
+    if (typeof parsed.code === "string" && !isLegacyBinarySearch) {
+      const project = createProjectFromTemplate(algorithmId, parsed.language);
       project.files[0].content = parsed.code;
       return {
         version: 1,
-        algorithmId: parsed.algorithmId,
+        algorithmId,
         language: parsed.language,
         project,
         inputText: parsed.inputText ?? "",
         locale: parsed.locale,
         soundPreset: "punchy"
+      };
+    }
+
+    if (isLegacyBinarySearch) {
+      return {
+        version: 1,
+        algorithmId,
+        language: parsed.language,
+        project: createProjectFromTemplate(algorithmId, parsed.language),
+        inputText: defaultInputText(algorithmId),
+        locale: parsed.locale,
+        soundPreset: parsed.soundPreset ?? "punchy"
       };
     }
 

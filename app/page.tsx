@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
-import { type CSSProperties, ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { editor as MonacoEditorApi } from "monaco-editor";
 
 import { CodeEditor } from "@/components/CodeEditor";
@@ -402,15 +402,20 @@ export default function HomePage() {
   const [outputText, setOutputText] = useState("");
   const [stderrText, setStderrText] = useState("");
   const [statusNote, setStatusNote] = useState("");
+  const [autoPlayPending, setAutoPlayPending] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [isCodeCollapsed, setIsCodeCollapsed] = useState(false);
   const [isEditorMenuOpen, setIsEditorMenuOpen] = useState(false);
+  const [visualizerSession, setVisualizerSession] = useState(0);
 
   const importRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<MonacoEditorApi.IStandaloneCodeEditor | null>(null);
   const audioRigRef = useRef<AudioRig | null>(null);
   const shareLoadedRef = useRef(false);
   const lastSoundIndexRef = useRef(-1);
+  const executionTokenRef = useRef(0);
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const activeTabRef = useRef<HTMLButtonElement | null>(null);
 
   const algorithm = useMemo(() => algorithmById(selectedAlgorithmId), [selectedAlgorithmId]);
   const project = useMemo(
@@ -443,6 +448,23 @@ export default function HomePage() {
     [ambientPalette]
   );
 
+  const resetPlaybackState = useCallback((clearOutput = false) => {
+    executionTokenRef.current += 1;
+    setEvents([]);
+    setCurrentIndex(0);
+    setIsPlaying(false);
+    setIsRunning(false);
+    setAutoPlayPending(false);
+    setStatusNote("");
+    lastSoundIndexRef.current = -1;
+    setVisualizerSession((value) => value + 1);
+
+    if (clearOutput) {
+      setOutputText("");
+      setStderrText("");
+    }
+  }, []);
+
   useEffect(() => {
     if (shareLoadedRef.current) {
       return;
@@ -458,11 +480,12 @@ export default function HomePage() {
     const payload = decodeShare(share);
     if (payload) {
       hydrateFromShare(payload);
+      resetPlaybackState(true);
       setStatusNote(t(payload.locale, "loadFromShare"));
     }
 
     shareLoadedRef.current = true;
-  }, [hydrateFromShare]);
+  }, [hydrateFromShare, resetPlaybackState]);
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -473,6 +496,39 @@ export default function HomePage() {
     const frame = window.requestAnimationFrame(() => editor.layout());
     return () => window.cancelAnimationFrame(frame);
   }, [activeFile.id, editorFontMode, editorWrapMode, isCodeCollapsed, selectedAlgorithmId, selectedLanguage]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const container = tabsRef.current;
+      const activeTab = activeTabRef.current;
+      if (!container || !activeTab) {
+        return;
+      }
+
+      const padding = isMobileViewport ? 12 : 18;
+      const containerLeft = container.scrollLeft;
+      const containerRight = containerLeft + container.clientWidth;
+      const tabLeft = activeTab.offsetLeft;
+      const tabRight = tabLeft + activeTab.offsetWidth;
+
+      if (tabLeft < containerLeft + padding) {
+        container.scrollTo({
+          left: Math.max(tabLeft - padding, 0),
+          behavior: "smooth"
+        });
+        return;
+      }
+
+      if (tabRight > containerRight - padding) {
+        container.scrollTo({
+          left: Math.max(tabRight - container.clientWidth + padding, 0),
+          behavior: "smooth"
+        });
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeFile.id, isMobileViewport, project.files.length, selectedAlgorithmId, selectedLanguage]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -519,6 +575,20 @@ export default function HomePage() {
       setIsPlaying(false);
     }
   }, [currentIndex, events.length, isPlaying]);
+
+  useEffect(() => {
+    if (!autoPlayPending || events.length < 2 || currentIndex !== 0) {
+      return;
+    }
+
+    const initialDelay = algorithm.category === "search" ? 450 : 260;
+    const timer = window.setTimeout(() => {
+      setIsPlaying(true);
+      setAutoPlayPending(false);
+    }, initialDelay);
+
+    return () => window.clearTimeout(timer);
+  }, [algorithm.category, autoPlayPending, currentIndex, events.length]);
 
   async function ensureAudio() {
     if (typeof window === "undefined") {
@@ -847,12 +917,9 @@ export default function HomePage() {
       void ensureAudio();
     }
 
+    resetPlaybackState(true);
     setIsRunning(true);
-    setIsPlaying(false);
-    setStatusNote("");
-    setStderrText("");
-    setOutputText("");
-    lastSoundIndexRef.current = -1;
+    const executionToken = executionTokenRef.current;
 
     const result = await executeCode({
       language: selectedLanguage,
@@ -862,10 +929,15 @@ export default function HomePage() {
       timeoutMs: selectedLanguage === "python" ? 20000 : 7000
     });
 
+    if (executionToken !== executionTokenRef.current) {
+      return;
+    }
+
     setIsRunning(false);
     setEvents(result.events);
     setCurrentIndex(0);
-    setIsPlaying(result.ok && result.events.length > 1);
+    setIsPlaying(false);
+    setAutoPlayPending(result.ok && result.events.length > 1);
 
     const composedOutput = [result.stdout, safeStringify(result.output)].filter(Boolean).join("\n");
     setOutputText(composedOutput);
@@ -933,6 +1005,7 @@ export default function HomePage() {
           throw new Error("Invalid payload");
         }
         hydrateFromShare(payload);
+        resetPlaybackState(true);
         setStatusNote(t(payload.locale, "loadFromShare"));
       })
       .catch(() => {
@@ -972,6 +1045,7 @@ export default function HomePage() {
         </div>
 
         <Visualizer
+          key={`${selectedAlgorithmId}-${selectedLanguage}-${visualizerSession}`}
           category={algorithm.category}
           events={events}
           currentIndex={currentIndex}
@@ -982,7 +1056,7 @@ export default function HomePage() {
       <section className={`code-window ${isCodeCollapsed ? "mobile-collapsed" : ""}`}>
         <LayoutGroup id="file-window-tabs">
           <div className="window-header">
-            <div className="window-tabs" role="tablist" aria-label={t(locale, "fileWindow")}>
+            <div ref={tabsRef} className="window-tabs" role="tablist" aria-label={t(locale, "fileWindow")}>
               <AnimatePresence initial={false}>
                 {project.files.map((file) => {
                   const removable = canRemoveFile(project, file.id);
@@ -999,8 +1073,10 @@ export default function HomePage() {
                       type="button"
                       role="tab"
                       aria-selected={active}
+                      ref={active ? activeTabRef : null}
                       className={`file-tab ${active ? "active" : ""}`}
                       onClick={() => setActiveFile(selectedAlgorithmId, selectedLanguage, file.id)}
+                      title={file.name}
                     >
                       {active ? (
                         <motion.span
@@ -1328,10 +1404,7 @@ export default function HomePage() {
               value={selectedAlgorithmId}
               onChange={(event) => {
                 setAlgorithm(event.target.value as typeof selectedAlgorithmId);
-                setEvents([]);
-                setCurrentIndex(0);
-                setOutputText("");
-                setStderrText("");
+                resetPlaybackState(true);
               }}
             >
               {algorithms.map((item) => (
@@ -1346,7 +1419,10 @@ export default function HomePage() {
             <span>{t(locale, "language")}</span>
             <select
               value={selectedLanguage}
-              onChange={(event) => setLanguage(event.target.value as typeof selectedLanguage)}
+              onChange={(event) => {
+                setLanguage(event.target.value as typeof selectedLanguage);
+                resetPlaybackState(true);
+              }}
             >
               {Object.entries(languageLabel).map(([key, label]) => (
                 <option key={key} value={key}>

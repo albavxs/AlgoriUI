@@ -15,7 +15,7 @@ Projeto MVP para escrever algoritmos em **TypeScript, JavaScript e Python** e vi
 - Algoritmos prontos:
   - Bubble Sort
   - Stalin Sort
-  - Binary Search
+  - Selection Sort
   - BFS
   - DFS
 - Timeline de eventos com play/pause/step/scrub
