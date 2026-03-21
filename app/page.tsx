@@ -189,6 +189,20 @@ function AddFileIcon({ className }: IconProps) {
   );
 }
 
+function RunAnimationIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path
+        d="M7.2 5.7L14 10L7.2 14.3V5.7Z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="0.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function safeGraphOrder(event: TraceEvent): string[] {
   const direct = Array.isArray(event.order) ? event.order.filter((item) => typeof item === "string") : [];
   if (direct.length > 0) {
@@ -1114,7 +1128,7 @@ export default function HomePage() {
                 layout
                 whileTap={{ scale: 0.96 }}
                 type="button"
-                className="file-add"
+                className="file-add file-add-inline"
                 onClick={() => addFile(selectedAlgorithmId, selectedLanguage)}
                 aria-label={t(locale, "addFile")}
                 title={t(locale, "addFile")}
@@ -1123,6 +1137,27 @@ export default function HomePage() {
               </motion.button>
             </div>
             <div className="editor-toolbar">
+              <div className="editor-toolbar-mobile mobile-only">
+                <button
+                  type="button"
+                  className="file-add"
+                  onClick={() => addFile(selectedAlgorithmId, selectedLanguage)}
+                  aria-label={t(locale, "addFile")}
+                  title={t(locale, "addFile")}
+                >
+                  <AddFileIcon className="file-add-icon" />
+                </button>
+                <button
+                  type="button"
+                  className="editor-tool-chip editor-run-button"
+                  onClick={runCode}
+                  disabled={isRunning}
+                  aria-label={isRunning ? t(locale, "running") : t(locale, "run")}
+                  title={isRunning ? t(locale, "running") : t(locale, "run")}
+                >
+                  <RunAnimationIcon className="editor-tool-icon" />
+                </button>
+              </div>
               <div className="editor-toolbar-desktop">
                 <div className="editor-tool-group" aria-label={t(locale, "wrapMode")}>
                   {(["auto", "wrap", "nowrap"] as const).map((mode) => (

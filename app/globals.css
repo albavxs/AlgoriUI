@@ -619,6 +619,12 @@ input[type="range"]:disabled {
   justify-content: flex-end;
 }
 
+.editor-toolbar-mobile {
+  display: none;
+  align-items: center;
+  gap: 6px;
+}
+
 .editor-toolbar-desktop {
   display: inline-flex;
   align-items: center;
@@ -677,6 +683,18 @@ input[type="range"]:disabled {
 .editor-menu-button {
   min-width: 48px;
   justify-content: center;
+}
+
+.editor-run-button {
+  min-width: 38px;
+  color: rgba(245, 249, 255, 0.94);
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(194, 203, 224, 0.16);
+}
+
+.editor-run-button:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(208, 216, 234, 0.2);
 }
 
 .file-add-icon {
@@ -1001,7 +1019,7 @@ input[type="range"]:disabled {
 
   .window-tabs {
     width: 100%;
-    padding-right: 46px;
+    padding-right: 132px;
     scroll-padding-inline: 12px;
     overscroll-behavior-x: contain;
   }
@@ -1038,6 +1056,10 @@ input[type="range"]:disabled {
     display: none;
   }
 
+  .editor-toolbar-mobile {
+    display: inline-flex;
+  }
+
   .editor-tool-chip {
     padding: 6px 9px;
     min-width: 32px;
@@ -1047,6 +1069,10 @@ input[type="range"]:disabled {
 
   .mobile-only {
     display: inline-flex;
+  }
+
+  .file-add-inline {
+    display: none;
   }
 
   .editor-mobile-panel {
