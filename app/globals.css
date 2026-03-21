@@ -471,7 +471,7 @@ input[type="range"]:disabled {
 
 .code-window {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   background: var(--panel-strong);
 }
 
@@ -963,6 +963,14 @@ input[type="range"]:disabled {
 }
 
 @media (max-width: 640px) {
+  .code-window {
+    overflow: visible;
+  }
+
+  .code-window.mobile-collapsed {
+    overflow: visible;
+  }
+
   :root {
     --viz-stage-height: clamp(228px, 62vw, 284px);
   }
