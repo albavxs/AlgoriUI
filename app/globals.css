@@ -398,6 +398,8 @@ input[type="range"]:disabled {
   position: relative;
   display: grid;
   gap: 14px;
+  width: 100%;
+  min-width: 0;
   padding: 40px 2px 8px;
 }
 
@@ -417,8 +419,20 @@ input[type="range"]:disabled {
 .hero-copy {
   display: grid;
   gap: 8px;
+  width: 100%;
+  min-width: 0;
   justify-items: center;
   text-align: center;
+}
+
+.hero-copy > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.hero-stage > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .hero-copy h1 {
@@ -443,10 +457,12 @@ input[type="range"]:disabled {
   flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
+  width: 100%;
   margin-top: 4px;
 }
 
 .formula-row span {
+  max-width: 100%;
   padding: 8px 14px;
   border-radius: 15px;
   border: 1px solid rgba(126, 140, 172, 0.38);
@@ -476,12 +492,17 @@ input[type="range"]:disabled {
   height: var(--viz-stage-height);
   padding: 28px 10px 12px;
   position: relative;
+  max-width: 100%;
+  overflow: hidden;
   background: transparent;
   border: 0;
 }
 
 .graph-stage {
   position: relative;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   height: var(--viz-stage-height);
 }
 
@@ -557,6 +578,9 @@ input[type="range"]:disabled {
 .code-window,
 .panel-card,
 .event-panel {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   border-radius: 22px;
   border: 1px solid var(--line);
   background:
@@ -587,6 +611,7 @@ input[type="range"]:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-width: 0;
   padding: 10px 12px;
   border-bottom: 1px solid rgba(115, 128, 157, 0.22);
   background:
@@ -849,18 +874,26 @@ input[type="range"]:disabled {
 }
 
 .editor-shell {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
   min-height: 360px;
   background: rgba(13, 16, 22, 0.94);
 }
 
 .editor-panel {
+  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
 }
 
 .editor-shell > div,
 .editor-shell .monaco-editor,
 .editor-shell .monaco-editor-background,
-.editor-shell .overflow-guard {
+.editor-shell .overflow-guard,
+.editor-shell .monaco-scrollable-element {
+  width: 100% !important;
+  max-width: 100% !important;
   min-height: 360px;
 }
 
@@ -1043,6 +1076,203 @@ input[type="range"]:disabled {
   padding-right: 38px;
 }
 
+.mobile-picker-trigger {
+  width: 100%;
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(132, 145, 173, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.012)),
+    rgba(17, 20, 27, 0.78);
+  color: var(--text);
+  text-align: left;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.mobile-picker-trigger:hover,
+.mobile-picker-trigger.open {
+  border-color: rgba(174, 184, 206, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.038), rgba(255, 255, 255, 0.015)),
+    rgba(17, 20, 27, 0.84);
+}
+
+.mobile-picker-trigger:focus {
+  outline: none;
+  border-color: rgba(214, 222, 240, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.024),
+    0 0 0 1px rgba(214, 222, 240, 0.08);
+}
+
+.mobile-picker-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobile-picker-chevron {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-right: 1.6px solid rgba(224, 231, 244, 0.62);
+  border-bottom: 1.6px solid rgba(224, 231, 244, 0.62);
+  transform: rotate(45deg) translateY(-1px);
+  transition: transform 160ms ease;
+}
+
+.mobile-picker-trigger.open .mobile-picker-chevron {
+  transform: rotate(225deg) translateY(-1px);
+}
+
+.mobile-picker-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 260;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding:
+    max(18px, var(--safe-top))
+    calc(14px + var(--safe-right))
+    calc(14px + var(--safe-bottom))
+    calc(14px + var(--safe-left));
+}
+
+.mobile-picker-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  border-radius: 0;
+  background: rgba(5, 8, 14, 0.52);
+  backdrop-filter: blur(12px) saturate(135%);
+  box-shadow: none;
+}
+
+.mobile-picker-sheet {
+  position: relative;
+  width: min(100%, 520px);
+  max-height: min(76vh, 620px);
+  display: grid;
+  gap: 14px;
+  overflow: hidden;
+  border-radius: 28px 28px 22px 22px;
+  border: 1px solid rgba(142, 154, 181, 0.18);
+  background:
+    linear-gradient(180deg, rgba(34, 40, 52, 0.94), rgba(14, 18, 26, 0.92)),
+    rgba(12, 16, 24, 0.92);
+  backdrop-filter: blur(30px) saturate(165%);
+  box-shadow:
+    0 30px 60px rgba(0, 0, 0, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  padding: 10px 12px 12px;
+}
+
+.mobile-picker-grabber {
+  width: 42px;
+  height: 5px;
+  margin: 2px auto 0;
+  border-radius: 999px;
+  background: rgba(224, 231, 244, 0.18);
+}
+
+.mobile-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mobile-picker-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.mobile-picker-close {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(184, 194, 218, 0.16);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.mobile-picker-options {
+  display: grid;
+  gap: 8px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.mobile-picker-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 15px;
+  border-radius: 16px;
+  border: 1px solid rgba(128, 141, 170, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.01)),
+    rgba(17, 21, 29, 0.76);
+  color: var(--text);
+  text-align: left;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.mobile-picker-option:hover,
+.mobile-picker-option.active {
+  border-color: rgba(184, 194, 218, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.038), rgba(255, 255, 255, 0.014)),
+    rgba(23, 28, 38, 0.84);
+}
+
+.mobile-picker-option-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.96rem;
+  font-weight: 600;
+}
+
+.mobile-picker-option-check {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(184, 194, 218, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  color: #dff7ff;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.mobile-picker-option.active .mobile-picker-option-check {
+  border-color: rgba(147, 223, 255, 0.38);
+  background: rgba(42, 186, 255, 0.18);
+}
+
 .status-line {
   min-height: 1.2rem;
   text-align: center;
@@ -1150,11 +1380,13 @@ input[type="range"]:disabled {
   }
 
   .code-window {
-    overflow: visible;
+    overflow-x: hidden;
+    overflow-y: visible;
   }
 
   .code-window.mobile-collapsed {
-    overflow: visible;
+    overflow-x: hidden;
+    overflow-y: visible;
   }
 
   :root {
@@ -1164,6 +1396,37 @@ input[type="range"]:disabled {
   .hero-stage {
     gap: 12px;
     padding-top: 30px;
+  }
+
+  .hero-copy {
+    gap: 10px;
+  }
+
+  .hero-copy h1 {
+    width: 100%;
+    max-width: min(100%, 12ch);
+    margin-inline: auto;
+    font-size: clamp(1.95rem, 8.8vw, 2.7rem);
+    line-height: 1;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    text-wrap: unset;
+  }
+
+  .hero-copy p {
+    max-width: min(100%, 30ch);
+  }
+
+  .formula-row {
+    gap: 8px;
+  }
+
+  .formula-row span {
+    padding: 7px 11px;
+    font-size: 0.9rem;
+    white-space: normal;
+    text-align: center;
   }
 
   .bars-wrap,

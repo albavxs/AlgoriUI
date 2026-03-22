@@ -2,7 +2,17 @@
 
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import Link from "next/link";
-import { type CSSProperties, ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  ChangeEvent,
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import type { editor as MonacoEditorApi } from "monaco-editor";
 
 import { CodeEditor } from "@/components/CodeEditor";
@@ -19,7 +29,15 @@ import {
   findActiveFile,
   useAppStore
 } from "@/lib/store";
-import type { AlgorithmCategory, Language, SharePayload, SoundPreset, TraceEvent, VisualizerType } from "@/lib/types";
+import type {
+  AlgorithmCategory,
+  Language,
+  Locale,
+  SharePayload,
+  SoundPreset,
+  TraceEvent,
+  VisualizerType
+} from "@/lib/types";
 
 type AudioRig = {
   context: AudioContext;
@@ -94,8 +112,38 @@ const wrapLabelKey: Record<EditorWrapMode, "wrapAuto" | "wrapOn" | "wrapOff"> = 
 
 const fontModeOrder: EditorFontMode[] = ["sm", "md", "lg"];
 
+type MobilePickerName = "soundPreset" | "algorithm" | "language" | "locale";
+
+type PickerOption = {
+  value: string;
+  label: string;
+};
+
 type IconProps = {
   className?: string;
+};
+
+type AdaptivePickerFieldProps = {
+  compact?: boolean;
+  dialogId: string;
+  label: string;
+  mobile: boolean;
+  open: boolean;
+  options: readonly PickerOption[];
+  value: string;
+  valueLabel: string;
+  onOpen: (event: MouseEvent<HTMLButtonElement>) => void;
+  onNativeChange: (value: string) => void;
+};
+
+type MobilePickerSheetProps = {
+  closeLabel: string;
+  dialogId: string;
+  label: string;
+  options: readonly PickerOption[];
+  value: string;
+  onClose: () => void;
+  onSelect: (value: string) => void;
 };
 
 function WrapAutoIcon({ className }: IconProps) {
@@ -250,6 +298,113 @@ function BrandLogo() {
         AlgoriUI
       </text>
     </svg>
+  );
+}
+
+function AdaptivePickerField({
+  compact = false,
+  dialogId,
+  label,
+  mobile,
+  open,
+  options,
+  value,
+  valueLabel,
+  onOpen,
+  onNativeChange
+}: AdaptivePickerFieldProps) {
+  return (
+    <label className={`control-block${compact ? " compact" : ""}`}>
+      <span>{label}</span>
+      {mobile ? (
+        <button
+          type="button"
+          className={`mobile-picker-trigger ${open ? "open" : ""}`}
+          onClick={onOpen}
+          aria-controls={open ? dialogId : undefined}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+        >
+          <span className="mobile-picker-value">{valueLabel}</span>
+          <span className="mobile-picker-chevron" aria-hidden="true" />
+        </button>
+      ) : (
+        <select value={value} onChange={(event) => onNativeChange(event.target.value)}>
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      )}
+    </label>
+  );
+}
+
+function MobilePickerSheet({
+  closeLabel,
+  dialogId,
+  label,
+  options,
+  value,
+  onClose,
+  onSelect
+}: MobilePickerSheetProps) {
+  const titleId = useId();
+
+  return (
+    <motion.div className="mobile-picker-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.button
+        type="button"
+        className="mobile-picker-backdrop"
+        onClick={onClose}
+        aria-label={closeLabel}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      />
+      <motion.div
+        id={dialogId}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="mobile-picker-sheet"
+        initial={{ opacity: 0, y: 28, scale: 0.985 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 20, scale: 0.99 }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <span className="mobile-picker-grabber" aria-hidden="true" />
+        <div className="mobile-picker-header">
+          <h2 id={titleId} className="mobile-picker-title">
+            {label}
+          </h2>
+          <button type="button" className="mobile-picker-close" onClick={onClose}>
+            {closeLabel}
+          </button>
+        </div>
+        <div className="mobile-picker-options">
+          {options.map((option) => {
+            const active = option.value === value;
+
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={`mobile-picker-option ${active ? "active" : ""}`}
+                onClick={() => onSelect(option.value)}
+              >
+                <span className="mobile-picker-option-label">{option.label}</span>
+                <span className="mobile-picker-option-check" aria-hidden="true">
+                  {active ? "✓" : ""}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -557,6 +712,7 @@ export default function HomePage() {
   const [isCodeCollapsed, setIsCodeCollapsed] = useState(false);
   const [isEditorMenuOpen, setIsEditorMenuOpen] = useState(false);
   const [isSiteMenuOpen, setIsSiteMenuOpen] = useState(false);
+  const [activeMobilePicker, setActiveMobilePicker] = useState<MobilePickerName | null>(null);
   const [visualizerSession, setVisualizerSession] = useState(0);
 
   const importRef = useRef<HTMLInputElement>(null);
@@ -567,6 +723,7 @@ export default function HomePage() {
   const executionTokenRef = useRef(0);
   const tabsRef = useRef<HTMLDivElement>(null);
   const activeTabRef = useRef<HTMLButtonElement | null>(null);
+  const mobilePickerTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const algorithm = useMemo(() => algorithmById(selectedAlgorithmId), [selectedAlgorithmId]);
   const project = useMemo(
@@ -603,6 +760,41 @@ export default function HomePage() {
       }) as CSSProperties,
     [ambientPalette]
   );
+  const soundPresetOptions = useMemo<PickerOption[]>(
+    () => [
+      { value: "soft", label: t(locale, "presetSoft") },
+      { value: "balanced", label: t(locale, "presetBalanced") },
+      { value: "punchy", label: t(locale, "presetPunchy") },
+      { value: "piano", label: t(locale, "presetPiano") }
+    ],
+    [locale]
+  );
+  const algorithmOptions = useMemo<PickerOption[]>(
+    () =>
+      [...algorithms]
+        .sort((a, b) => a.title[locale].localeCompare(b.title[locale], locale))
+        .map((item) => ({
+          value: item.id,
+          label: item.title[locale]
+        })),
+    [locale]
+  );
+  const languageOptions = useMemo<PickerOption[]>(
+    () =>
+      (Object.entries(languageLabel) as Array<[Language, string]>).map(([key, label]) => ({
+        value: key,
+        label
+      })),
+    []
+  );
+  const localeOptions = useMemo<PickerOption[]>(
+    () =>
+      (Object.entries(localeLabel) as Array<[Locale, string]>).map(([key, label]) => ({
+        value: key,
+        label
+      })),
+    []
+  );
 
   const resetPlaybackState = useCallback((clearOutput = false) => {
     executionTokenRef.current += 1;
@@ -619,6 +811,23 @@ export default function HomePage() {
       setOutputText("");
       setStderrText("");
     }
+  }, []);
+
+  const closeMobilePicker = useCallback((restoreFocus = true) => {
+    setActiveMobilePicker(null);
+
+    if (restoreFocus && typeof window !== "undefined") {
+      window.setTimeout(() => {
+        mobilePickerTriggerRef.current?.focus();
+      }, 0);
+    }
+  }, []);
+
+  const openMobilePicker = useCallback((picker: MobilePickerName, event: MouseEvent<HTMLButtonElement>) => {
+    mobilePickerTriggerRef.current = event.currentTarget;
+    setIsSiteMenuOpen(false);
+    setIsEditorMenuOpen(false);
+    setActiveMobilePicker(picker);
   }, []);
 
   useEffect(() => {
@@ -713,6 +922,51 @@ export default function HomePage() {
       window.removeEventListener("resize", updateViewport);
     };
   }, []);
+
+  useEffect(() => {
+    if (!activeMobilePicker) {
+      return;
+    }
+
+    const root = document.documentElement;
+    const body = document.body;
+    const previousRootOverflow = root.style.overflow;
+    const previousBodyOverflow = body.style.overflow;
+
+    root.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+
+    return () => {
+      root.style.overflow = previousRootOverflow;
+      body.style.overflow = previousBodyOverflow;
+    };
+  }, [activeMobilePicker]);
+
+  useEffect(() => {
+    if (!activeMobilePicker) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      event.preventDefault();
+      closeMobilePicker();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [activeMobilePicker, closeMobilePicker]);
+
+  useEffect(() => {
+    if (!isMobileViewport && activeMobilePicker) {
+      closeMobilePicker(false);
+    }
+  }, [activeMobilePicker, closeMobilePicker, isMobileViewport]);
 
   useEffect(() => {
     if (!isPlaying || events.length < 2) {
@@ -1337,6 +1591,88 @@ export default function HomePage() {
 
     return safeStringify(currentTraceEvent);
   }, [currentTraceEvent]);
+  const activeMobilePickerConfig = useMemo(() => {
+    switch (activeMobilePicker) {
+      case "soundPreset":
+        return {
+          dialogId: "mobile-picker-sound-preset",
+          label: t(locale, "soundPreset"),
+          value: soundPreset,
+          options: soundPresetOptions,
+          onSelect: (nextValue: string) => {
+            if (nextValue !== soundPreset) {
+              setSoundPreset(nextValue as SoundPreset);
+            }
+          }
+        };
+      case "algorithm":
+        return {
+          dialogId: "mobile-picker-algorithm",
+          label: t(locale, "algorithm"),
+          value: selectedAlgorithmId,
+          options: algorithmOptions,
+          onSelect: (nextValue: string) => {
+            if (nextValue !== selectedAlgorithmId) {
+              setAlgorithm(nextValue as typeof selectedAlgorithmId);
+              resetPlaybackState(true);
+            }
+          }
+        };
+      case "language":
+        return {
+          dialogId: "mobile-picker-language",
+          label: t(locale, "language"),
+          value: selectedLanguage,
+          options: languageOptions,
+          onSelect: (nextValue: string) => {
+            if (nextValue !== selectedLanguage) {
+              setLanguage(nextValue as typeof selectedLanguage);
+              resetPlaybackState(true);
+            }
+          }
+        };
+      case "locale":
+        return {
+          dialogId: "mobile-picker-locale",
+          label: "Locale",
+          value: locale,
+          options: localeOptions,
+          onSelect: (nextValue: string) => {
+            if (nextValue !== locale) {
+              setLocale(nextValue as typeof locale);
+            }
+          }
+        };
+      default:
+        return null;
+    }
+  }, [
+    activeMobilePicker,
+    algorithmOptions,
+    languageOptions,
+    locale,
+    localeOptions,
+    resetPlaybackState,
+    selectedAlgorithmId,
+    selectedLanguage,
+    setAlgorithm,
+    setLanguage,
+    setLocale,
+    setSoundPreset,
+    soundPreset,
+    soundPresetOptions
+  ]);
+  const handleMobilePickerSelect = useCallback(
+    (nextValue: string) => {
+      if (!activeMobilePickerConfig) {
+        return;
+      }
+
+      activeMobilePickerConfig.onSelect(nextValue);
+      closeMobilePicker();
+    },
+    [activeMobilePickerConfig, closeMobilePicker]
+  );
 
   const fontModeIndex = fontModeOrder.indexOf(editorFontMode);
   const canDecreaseFont = fontModeIndex > 0;
@@ -1774,17 +2110,18 @@ export default function HomePage() {
               </button>
             </div>
 
-            <label className="control-block compact">
-              <span>
-                {t(locale, "soundPreset")}: {t(locale, presetLabelKey[soundPreset])}
-              </span>
-              <select value={soundPreset} onChange={(event) => setSoundPreset(event.target.value as SoundPreset)}>
-                <option value="soft">{t(locale, "presetSoft")}</option>
-                <option value="balanced">{t(locale, "presetBalanced")}</option>
-                <option value="punchy">{t(locale, "presetPunchy")}</option>
-                <option value="piano">{t(locale, "presetPiano")}</option>
-              </select>
-            </label>
+            <AdaptivePickerField
+              compact
+              dialogId="mobile-picker-sound-preset"
+              label={t(locale, "soundPreset")}
+              mobile={isMobileViewport}
+              open={activeMobilePicker === "soundPreset"}
+              options={soundPresetOptions}
+              value={soundPreset}
+              valueLabel={t(locale, presetLabelKey[soundPreset])}
+              onOpen={(event) => openMobilePicker("soundPreset", event)}
+              onNativeChange={(value) => setSoundPreset(value as SoundPreset)}
+            />
 
             <label className="control-block compact">
               <span>
@@ -1806,52 +2143,47 @@ export default function HomePage() {
 
       <section className="panel-card feature-panel">
         <div className="selectors-grid">
-          <label>
-            <span>{t(locale, "algorithm")}</span>
-            <select
-              value={selectedAlgorithmId}
-              onChange={(event) => {
-                setAlgorithm(event.target.value as typeof selectedAlgorithmId);
-                resetPlaybackState(true);
-              }}
-            >
-              {[...algorithms]
-                .sort((a, b) => a.title[locale].localeCompare(b.title[locale], locale))
-                .map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.title[locale]}
-                  </option>
-                ))}
-            </select>
-          </label>
+          <AdaptivePickerField
+            dialogId="mobile-picker-algorithm"
+            label={t(locale, "algorithm")}
+            mobile={isMobileViewport}
+            open={activeMobilePicker === "algorithm"}
+            options={algorithmOptions}
+            value={selectedAlgorithmId}
+            valueLabel={algorithm.title[locale]}
+            onOpen={(event) => openMobilePicker("algorithm", event)}
+            onNativeChange={(value) => {
+              setAlgorithm(value as typeof selectedAlgorithmId);
+              resetPlaybackState(true);
+            }}
+          />
 
-          <label>
-            <span>{t(locale, "language")}</span>
-            <select
-              value={selectedLanguage}
-              onChange={(event) => {
-                setLanguage(event.target.value as typeof selectedLanguage);
-                resetPlaybackState(true);
-              }}
-            >
-              {Object.entries(languageLabel).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <AdaptivePickerField
+            dialogId="mobile-picker-language"
+            label={t(locale, "language")}
+            mobile={isMobileViewport}
+            open={activeMobilePicker === "language"}
+            options={languageOptions}
+            value={selectedLanguage}
+            valueLabel={languageLabel[selectedLanguage]}
+            onOpen={(event) => openMobilePicker("language", event)}
+            onNativeChange={(value) => {
+              setLanguage(value as typeof selectedLanguage);
+              resetPlaybackState(true);
+            }}
+          />
 
-          <label>
-            <span>Locale</span>
-            <select value={locale} onChange={(event) => setLocale(event.target.value as typeof locale)}>
-              {Object.entries(localeLabel).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <AdaptivePickerField
+            dialogId="mobile-picker-locale"
+            label="Locale"
+            mobile={isMobileViewport}
+            open={activeMobilePicker === "locale"}
+            options={localeOptions}
+            value={locale}
+            valueLabel={localeLabel[locale]}
+            onOpen={(event) => openMobilePicker("locale", event)}
+            onNativeChange={(value) => setLocale(value as typeof locale)}
+          />
         </div>
 
         <div className="actions-row">
@@ -1908,6 +2240,20 @@ export default function HomePage() {
       </details>
 
       <footer className="status-line">{statusNote}</footer>
+
+      <AnimatePresence>
+        {isMobileViewport && activeMobilePickerConfig ? (
+          <MobilePickerSheet
+            closeLabel={t(locale, "close")}
+            dialogId={activeMobilePickerConfig.dialogId}
+            label={activeMobilePickerConfig.label}
+            options={activeMobilePickerConfig.options}
+            value={activeMobilePickerConfig.value}
+            onClose={() => closeMobilePicker()}
+            onSelect={handleMobilePickerSelect}
+          />
+        ) : null}
+      </AnimatePresence>
     </main>
   );
 }
