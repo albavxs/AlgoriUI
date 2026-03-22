@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
+import Link from "next/link";
 import { type CSSProperties, ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { editor as MonacoEditorApi } from "monaco-editor";
 
@@ -18,7 +19,7 @@ import {
   findActiveFile,
   useAppStore
 } from "@/lib/store";
-import type { AlgorithmCategory, Language, SharePayload, SoundPreset, TraceEvent } from "@/lib/types";
+import type { AlgorithmCategory, Language, SharePayload, SoundPreset, TraceEvent, VisualizerType } from "@/lib/types";
 
 type AudioRig = {
   context: AudioContext;
@@ -214,6 +215,44 @@ function SiteMenuIcon({ className }: IconProps) {
   );
 }
 
+function BrandLogo() {
+  return (
+    <svg className="brand-logo" viewBox="0 0 168 32" fill="none" role="img" aria-label="AlgoriUI">
+      <title>AlgoriUI</title>
+      <defs>
+        <linearGradient id="brand-logo-gradient" x1="4" y1="4" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#32D74B" />
+          <stop offset="0.55" stopColor="#22D3EE" />
+          <stop offset="1" stopColor="#FFD60A" />
+        </linearGradient>
+      </defs>
+      <rect x="1" y="1" width="30" height="30" rx="10" fill="rgba(255, 255, 255, 0.03)" stroke="rgba(184, 194, 218, 0.2)" />
+      <path
+        d="M8 21.4L12.1 10.3C12.4 9.5 13.6 9.5 13.9 10.3L18 21.4"
+        stroke="url(#brand-logo-gradient)"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M10.2 16.6H15.8" stroke="url(#brand-logo-gradient)" strokeWidth="2.2" strokeLinecap="round" />
+      <circle cx="23.2" cy="11.2" r="2.3" fill="#22D3EE" />
+      <circle cx="23.2" cy="20.8" r="2.3" fill="#FFD60A" />
+      <path d="M23.2 13.8V18.2" stroke="rgba(255, 255, 255, 0.28)" strokeWidth="1.5" strokeLinecap="round" />
+      <text
+        x="40"
+        y="20.6"
+        fill="#F5F7FB"
+        fontSize="16"
+        fontWeight="700"
+        letterSpacing="-0.04em"
+        fontFamily="ui-sans-serif, system-ui, sans-serif"
+      >
+        AlgoriUI
+      </text>
+    </svg>
+  );
+}
+
 function safeGraphOrder(event: TraceEvent): string[] {
   const direct = Array.isArray(event.order) ? event.order.filter((item) => typeof item === "string") : [];
   if (direct.length > 0) {
@@ -225,6 +264,81 @@ function safeGraphOrder(event: TraceEvent): string[] {
 
 function safeArrayValues(event: TraceEvent): number[] {
   return Array.isArray(event.arr) ? event.arr.filter((item) => typeof item === "number") : [];
+}
+
+function buildCustomAutoArrayInput(): number[] {
+  return [6, 2, 9, 1, 7, 3];
+}
+
+function buildCustomAutoMazeInput() {
+  return {
+    grid: [
+      [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+      [0, 1, 1, 0, 1, 1, 0, 1, 1, 1, 0],
+      [0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0],
+      [1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0],
+      [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+      [0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0],
+      [0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0],
+      [0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0],
+      [0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0]
+    ],
+    start: [0, 0],
+    end: [8, 10]
+  };
+}
+
+function stringifyInputValue(value: unknown): string {
+  return Array.isArray(value) ? JSON.stringify(value) : JSON.stringify(value, null, 2);
+}
+
+function inferCustomInputValue(source: string): unknown {
+  const normalized = source.toLowerCase();
+  const readsGridField = /(input|input_data)\s*(?:\.\s*grid|\[\s*["']grid["']\s*\])/.test(normalized);
+  const destructuresMazeInput = /\{\s*[^}]*\bgrid\b[^}]*\bstart\b[^}]*\bend\b[^}]*\}\s*=\s*(input|input_data)/.test(normalized);
+  const looksLikeMazeModel =
+    /\bgrid\b/.test(normalized) &&
+    /\bstart\b/.test(normalized) &&
+    /\bend\b/.test(normalized) &&
+    (/\bvisited\b/.test(normalized) || /\bpath\b/.test(normalized));
+
+  if (readsGridField || destructuresMazeInput || looksLikeMazeModel) {
+    return buildCustomAutoMazeInput();
+  }
+
+  return buildCustomAutoArrayInput();
+}
+
+function resolveVisualizerMode(
+  selectedAlgorithmId: string,
+  algorithm: { category: AlgorithmCategory; visualizer?: VisualizerType },
+  events: TraceEvent[]
+): VisualizerType {
+  if (selectedAlgorithmId !== "custom") {
+    return algorithm.visualizer ?? (algorithm.category === "graph" ? "graph" : "sorting");
+  }
+
+  if (events.some((event) => event?.t === "maze-start" || Array.isArray(event?.grid))) {
+    return "maze";
+  }
+
+  if (events.some((event) => event?.t === "graph-state" || Array.isArray(event?.nodes))) {
+    return "graph";
+  }
+
+  if (events.some((event) => Array.isArray(event?.buckets))) {
+    return "bucket";
+  }
+
+  if (events.some((event) => typeof event?.heapSize === "number" || event?.t === "heapify" || event?.t === "extract")) {
+    return "heap";
+  }
+
+  if (events.some((event) => typeof event?.digit === "number" || Array.isArray(event?.counts) || Array.isArray(event?.output))) {
+    return "radix";
+  }
+
+  return "sorting";
 }
 
 type AmbientPalette = {
@@ -329,6 +443,17 @@ function resolveAmbientPalette(category: AlgorithmCategory, event: TraceEvent | 
           heroB: "rgba(89, 96, 112, 0.07)",
           heroC: "rgba(255, 255, 255, 0.03)"
         };
+  }
+
+  if (eventType === "maze-start" || eventType === "maze-visit") {
+    return {
+      bodyA: "rgba(50, 215, 75, 0.1)",
+      bodyB: "rgba(34, 211, 238, 0.08)",
+      bodyC: "rgba(255, 214, 10, 0.04)",
+      heroA: "rgba(50, 215, 75, 0.15)",
+      heroB: "rgba(34, 211, 238, 0.12)",
+      heroC: "rgba(255, 214, 10, 0.07)"
+    };
   }
 
   if (eventType === "graph-state") {
@@ -450,6 +575,7 @@ export default function HomePage() {
   );
   const activeFile = useMemo(() => findActiveFile(project), [project]);
   const inputText = inputMap[selectedAlgorithmId] ?? "";
+  const isCustomAlgorithm = selectedAlgorithmId === "custom";
   const currentTraceEvent = useMemo(() => {
     if (!events.length) {
       return null;
@@ -460,6 +586,10 @@ export default function HomePage() {
   const ambientPalette = useMemo(
     () => resolveAmbientPalette(algorithm.category, currentTraceEvent),
     [algorithm.category, currentTraceEvent]
+  );
+  const visualizerMode = useMemo(
+    () => resolveVisualizerMode(selectedAlgorithmId, algorithm, events),
+    [algorithm, events, selectedAlgorithmId]
   );
   const ambientStyle = useMemo(
     () =>
@@ -498,16 +628,13 @@ export default function HomePage() {
 
     const url = new URL(window.location.href);
     const share = url.searchParams.get("share");
-    if (!share) {
-      shareLoadedRef.current = true;
-      return;
-    }
-
-    const payload = decodeShare(share);
-    if (payload) {
-      hydrateFromShare(payload);
-      resetPlaybackState(true);
-      setStatusNote(t(payload.locale, "loadFromShare"));
+    if (share) {
+      const payload = decodeShare(share);
+      if (payload) {
+        hydrateFromShare(payload);
+        resetPlaybackState(true);
+        setStatusNote(t(payload.locale, "loadFromShare"));
+      }
     }
 
     // Deep-link from /aprenda page: ?algorithm=heap-sort etc.
@@ -790,23 +917,88 @@ export default function HomePage() {
     });
   }
 
-  function playPianoNote(rig: AudioRig, value: number, maxValue: number, when = 0) {
-    const minFreq = 130.81; // C3
-    const maxFreq = 1046.5; // C6
-    const ratio = Math.max(0, Math.min(1, value / Math.max(maxValue, 1)));
-    const freq = minFreq * Math.pow(maxFreq / minFreq, ratio);
+  function playPianoFrequency(
+    rig: AudioRig,
+    frequency: number,
+    when = 0,
+    options?: {
+      duration?: number;
+      gain?: number;
+    }
+  ) {
+    const duration = options?.duration ?? 0.46;
+    const peakGain = options?.gain ?? soundVolume * 0.14;
     const t = rig.context.currentTime + when;
     const osc = rig.context.createOscillator();
     const gain = rig.context.createGain();
     osc.connect(gain);
     gain.connect(rig.master);
     osc.type = "triangle";
-    osc.frequency.value = freq;
+    osc.frequency.value = frequency;
     gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(soundVolume * 0.14, t + 0.012);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
+    gain.gain.linearRampToValueAtTime(peakGain, t + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
     osc.start(t);
-    osc.stop(t + 0.46);
+    osc.stop(t + duration + 0.04);
+  }
+
+  function playPianoNote(rig: AudioRig, value: number, maxValue: number, when = 0) {
+    const minFreq = 130.81; // C3
+    const maxFreq = 1046.5; // C6
+    const ratio = Math.max(0, Math.min(1, value / Math.max(maxValue, 1)));
+    const freq = minFreq * Math.pow(maxFreq / minFreq, ratio);
+    playPianoFrequency(rig, freq, when);
+  }
+
+  function playPositionalEventSound(rig: AudioRig, event: TraceEvent, eventType: string): boolean {
+    if (eventType === "maze-start") {
+      const start = Array.isArray(event.start) ? event.start : [];
+      const row = typeof start[0] === "number" ? start[0] : 0;
+      const col = typeof start[1] === "number" ? start[1] : 0;
+      const frequency = 220 + row * 24 + col * 12;
+
+      if (soundPreset === "piano") {
+        playPianoFrequency(rig, frequency, 0, {
+          duration: 0.22,
+          gain: soundVolume * 0.09
+        });
+      } else {
+        const profile = soundProfiles[soundPreset];
+        playOsc(rig, {
+          frequency,
+          type: "triangle",
+          duration: 0.05,
+          gain: Math.max(profile.compareGain - 0.01, 0.02)
+        });
+      }
+
+      return true;
+    }
+
+    if (eventType === "maze-visit") {
+      const row = typeof event.row === "number" ? event.row : 0;
+      const col = typeof event.col === "number" ? event.col : 0;
+      const frequency = 260 + row * 28 + col * 14;
+
+      if (soundPreset === "piano") {
+        playPianoFrequency(rig, frequency, 0, {
+          duration: 0.22,
+          gain: soundVolume * 0.1
+        });
+      } else {
+        const profile = soundProfiles[soundPreset];
+        playOsc(rig, {
+          frequency,
+          type: "triangle",
+          duration: 0.04,
+          gain: Math.max(profile.compareGain, 0.03)
+        });
+      }
+
+      return true;
+    }
+
+    return false;
   }
 
   async function playEventSound(event: TraceEvent) {
@@ -820,6 +1012,10 @@ export default function HomePage() {
     }
 
     const eventType = String(event.t ?? "");
+
+    if (playPositionalEventSound(rig, event, eventType)) {
+      return;
+    }
 
     // Piano preset — pitched notes mapped to array values
     if (soundPreset === "piano") {
@@ -1061,6 +1257,13 @@ export default function HomePage() {
     }
   }
 
+  function autoFillInput() {
+    const source = project.files.map((file) => file.content).join("\n\n");
+    const inferred = inferCustomInputValue(source);
+    setInputText(selectedAlgorithmId, stringifyInputValue(inferred));
+    setStatusNote(t(locale, Array.isArray(inferred) ? "autoInputArrayReady" : "autoInputMazeReady"));
+  }
+
   function copyShareLink() {
     const payload: SharePayload = {
       version: 1,
@@ -1142,8 +1345,7 @@ export default function HomePage() {
   return (
     <main className="app-shell" style={ambientStyle}>
       <header className="site-topbar">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="AlgoriUI" className="brand-logo" />
+        <BrandLogo />
         <div className="topbar-right">
           <a
             href="https://github.com/albavxs/AlgoriUI"
@@ -1156,6 +1358,12 @@ export default function HomePage() {
               <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
             </svg>
           </a>
+          <Link href="/aprenda" className="topbar-learn-link" onClick={() => setIsSiteMenuOpen(false)}>
+            <span>{locale === "pt" ? "Aprenda" : "Learn"}</span>
+            <span className="topbar-learn-arrow" aria-hidden="true">
+              →
+            </span>
+          </Link>
           <div className="site-menu-wrap">
           <button
             type="button"
@@ -1188,13 +1396,6 @@ export default function HomePage() {
                     </button>
                   ))}
                 </div>
-                <a
-                  href="/aprenda"
-                  className="site-menu-learn"
-                  onClick={() => setIsSiteMenuOpen(false)}
-                >
-                  {t(locale, "learnMore")} →
-                </a>
               </motion.div>
             )}
           </AnimatePresence>
@@ -1214,7 +1415,7 @@ export default function HomePage() {
 
         <Visualizer
           key={`${selectedAlgorithmId}-${selectedLanguage}-${visualizerSession}`}
-          visualizer={algorithm.visualizer ?? (algorithm.category === "graph" ? "graph" : "sorting")}
+          visualizer={visualizerMode}
           events={events}
           currentIndex={currentIndex}
           emptyLabel={t(locale, "noEvents")}
@@ -1676,13 +1877,22 @@ export default function HomePage() {
       <section className="panel-card io-panel">
         <div className="io-grid">
           <label className="io-field">
-            <span>{t(locale, "input")}</span>
+            <div className="io-field-head">
+              <span>{t(locale, "input")}</span>
+              {isCustomAlgorithm ? (
+                <button type="button" className="action-button io-auto-button" onClick={autoFillInput}>
+                  {t(locale, "autoInput")}
+                </button>
+              ) : null}
+            </div>
             <textarea
               className="io-textarea"
               value={inputText}
               onChange={(event) => setInputText(selectedAlgorithmId, event.target.value)}
+              placeholder={isCustomAlgorithm ? t(locale, "customInputPlaceholder") : undefined}
               rows={8}
             />
+            {isCustomAlgorithm ? <small className="io-field-hint">{t(locale, "autoInputHint")}</small> : null}
           </label>
 
           <label className="io-field">

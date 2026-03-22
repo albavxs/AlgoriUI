@@ -290,16 +290,13 @@ export default function AprendaPage() {
                 <p className="learn-description">{section.description[locale]}</p>
                 <p className="learn-key-idea">{section.keyIdea[locale]}</p>
                 <p className="learn-editor-tip">{section.editorTip[locale]}</p>
-                <a
-                  href={`/?algorithm=${section.algorithmId}`}
-                  className="learn-try-btn"
-                >
+                <Link href={`/?algorithm=${section.algorithmId}`} className="learn-try-btn">
                   {t(locale, "learnTryInEditor")} →
-                </a>
+                </Link>
               </div>
 
               <div className="learn-image-slot">
-                <MiniVisualizer algorithmId={section.algorithmId} />
+                <MiniVisualizer algorithmId={section.algorithmId} locale={locale} />
               </div>
             </div>
           </motion.section>

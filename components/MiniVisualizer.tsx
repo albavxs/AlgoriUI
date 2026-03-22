@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { type ReactNode, useState, useEffect, useRef, useMemo, useCallback } from "react";
 
-import type { AlgorithmId } from "@/lib/types";
+import type { AlgorithmId, Locale } from "@/lib/types";
 
 // ── Demo data ─────────────────────────────────────────────────────────────────
 
@@ -23,25 +23,58 @@ const MINI_END: [number, number] = [5, 7];
 
 let miniAudioCtx: AudioContext | null = null;
 
+const MINI_SOUND_PROFILE = {
+  type: "sine" as OscillatorType,
+  attack: 0.005,
+  duration: 0.085,
+  peakGain: 0.055,
+  endGain: 0.001
+};
+
+const MINI_SPEED_OPTIONS = [
+  { value: 0.75, label: "0.75x" },
+  { value: 1, label: "1x" },
+  { value: 1.5, label: "1.5x" },
+  { value: 2, label: "2x" }
+] as const;
+
+type MiniSpeed = (typeof MINI_SPEED_OPTIONS)[number]["value"];
+
+function ensureMiniAudioContext() {
+  if (typeof window === "undefined") return null;
+
+  const AudioCtor =
+    window.AudioContext ||
+    (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+
+  if (!AudioCtor) return null;
+  if (!miniAudioCtx) miniAudioCtx = new AudioCtor();
+  return miniAudioCtx;
+}
+
 function playMiniBeep(frequency: number) {
-  if (typeof window === "undefined") return;
+  const ctx = ensureMiniAudioContext();
+  if (!ctx) return;
+
   try {
-    if (!miniAudioCtx) miniAudioCtx = new AudioContext();
-    const ctx = miniAudioCtx;
     const beep = () => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
+
       osc.connect(gain);
       gain.connect(ctx.destination);
-      osc.type = "sine";
+
+      osc.type = MINI_SOUND_PROFILE.type;
       osc.frequency.value = frequency;
-      gain.gain.setValueAtTime(0.07, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.06);
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(MINI_SOUND_PROFILE.peakGain, ctx.currentTime + MINI_SOUND_PROFILE.attack);
+      gain.gain.exponentialRampToValueAtTime(MINI_SOUND_PROFILE.endGain, ctx.currentTime + MINI_SOUND_PROFILE.duration);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + MINI_SOUND_PROFILE.duration + 0.03);
     };
+
     if (ctx.state === "suspended") {
-      ctx.resume().then(beep);
+      void ctx.resume().then(beep).catch(() => undefined);
     } else {
       beep();
     }
@@ -513,57 +546,122 @@ function getStepMs(id: AlgorithmId): number {
   return STEP_MS;
 }
 
-export function MiniVisualizer({ algorithmId }: { algorithmId: AlgorithmId }) {
-  const stepsRef = useRef<Step[]>([]);
-  const posRef = useRef(0);
-  const stepMsRef = useRef(STEP_MS);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+function getPlaybackDelay(stepMs: number, speed: MiniSpeed) {
+  return Math.max(36, Math.round(stepMs / speed));
+}
+
+type MiniVisualizerProps = {
+  algorithmId: AlgorithmId;
+  locale?: Locale;
+};
+
+export function MiniVisualizer({ algorithmId, locale = "pt" }: MiniVisualizerProps) {
+  const steps = useMemo(() => getSteps(algorithmId), [algorithmId]);
+  const baseStepMs = useMemo(() => getStepMs(algorithmId), [algorithmId]);
+  const playbackTimerRef = useRef<number | null>(null);
+  const lastSoundedStepRef = useRef(0);
   const [stepIdx, setStepIdx] = useState(0);
   const [status, setStatus] = useState<"idle" | "playing" | "done">("idle");
+  const [speed, setSpeed] = useState<MiniSpeed>(1);
+
+  const labels =
+    locale === "en"
+      ? {
+          play: "Play preview",
+          pause: "Pause preview",
+          replay: "Replay preview",
+          speed: "Speed",
+          progress: "Step"
+        }
+      : {
+          play: "Reproduzir preview",
+          pause: "Pausar preview",
+          replay: "Repetir preview",
+          speed: "Velocidade",
+          progress: "Etapa"
+        };
+
+  const clearPlaybackTimer = useCallback(() => {
+    if (playbackTimerRef.current) {
+      window.clearTimeout(playbackTimerRef.current);
+      playbackTimerRef.current = null;
+    }
+  }, []);
+
+  const progressText = `${Math.min(stepIdx + 1, Math.max(steps.length, 1))}/${Math.max(steps.length, 1)}`;
 
   useEffect(() => {
-    stepsRef.current = getSteps(algorithmId);
-    stepMsRef.current = getStepMs(algorithmId);
-    posRef.current = 0;
+    clearPlaybackTimer();
+    lastSoundedStepRef.current = 0;
     setStepIdx(0);
     setStatus("idle");
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [algorithmId]);
+    setSpeed(1);
+  }, [algorithmId, clearPlaybackTimer]);
 
-  const startFrom = useCallback((startPos: number) => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    // Resume AudioContext before interval so the first tick finds it running
-    if (typeof window !== "undefined") {
-      if (!miniAudioCtx) miniAudioCtx = new AudioContext();
-      if (miniAudioCtx.state === "suspended") miniAudioCtx.resume();
+  useEffect(() => clearPlaybackTimer, [clearPlaybackTimer]);
+
+  useEffect(() => {
+    if (status !== "playing") {
+      clearPlaybackTimer();
+      return;
     }
-    posRef.current = startPos;
+
+    if (steps.length < 2 || stepIdx >= steps.length - 1) {
+      clearPlaybackTimer();
+      setStatus("done");
+      return;
+    }
+
+    playbackTimerRef.current = window.setTimeout(() => {
+      setStepIdx((current) => Math.min(current + 1, steps.length - 1));
+    }, getPlaybackDelay(baseStepMs, speed));
+
+    return clearPlaybackTimer;
+  }, [baseStepMs, clearPlaybackTimer, speed, status, stepIdx, steps.length]);
+
+  useEffect(() => {
+    if (stepIdx === 0) {
+      lastSoundedStepRef.current = 0;
+      return;
+    }
+
+    if (lastSoundedStepRef.current === stepIdx) {
+      return;
+    }
+
+    lastSoundedStepRef.current = stepIdx;
+    const step = steps[stepIdx];
+    if (step) {
+      playMiniBeep(stepFrequency(step));
+    }
+  }, [stepIdx, steps]);
+
+  const play = useCallback(() => {
+    if (steps.length < 2) return;
+    clearPlaybackTimer();
+    if (stepIdx >= steps.length - 1) {
+      lastSoundedStepRef.current = 0;
+      setStepIdx(0);
+    }
     setStatus("playing");
-    timerRef.current = setInterval(() => {
-      posRef.current++;
-      if (posRef.current >= stepsRef.current.length) {
-        clearInterval(timerRef.current!);
-        timerRef.current = null;
-        setStatus("done");
-        return;
-      }
-      const s = stepsRef.current[posRef.current];
-      if (s) playMiniBeep(stepFrequency(s));
-      setStepIdx(posRef.current);
-    }, stepMsRef.current);
-  }, []);
+  }, [clearPlaybackTimer, stepIdx, steps.length]);
 
-  const play  = useCallback(() => startFrom(posRef.current), [startFrom]);
   const pause = useCallback(() => {
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    clearPlaybackTimer();
     setStatus("idle");
-  }, []);
-  const replay = useCallback(() => { setStepIdx(0); startFrom(0); }, [startFrom]);
+  }, [clearPlaybackTimer]);
 
-  const step = stepsRef.current[stepIdx] ?? stepsRef.current[0];
+  const replay = useCallback(() => {
+    clearPlaybackTimer();
+    lastSoundedStepRef.current = 0;
+    setStepIdx(0);
+    setStatus(steps.length < 2 ? "done" : "playing");
+  }, [clearPlaybackTimer, steps.length]);
+
+  const step = steps[stepIdx] ?? steps[0];
   if (!step) return null;
 
-  let canvas: React.ReactNode;
+  let canvas: ReactNode;
   switch (step.kind) {
     case "heap":   canvas = <MiniHeapView   step={step as HeapStep}   />; break;
     case "bucket": canvas = <MiniBucketView step={step as BucketStep} />; break;
@@ -575,14 +673,47 @@ export function MiniVisualizer({ algorithmId }: { algorithmId: AlgorithmId }) {
   return (
     <div className="mini-viz">
       <div className="mini-viz-canvas">{canvas}</div>
-      <div className="mini-viz-controls">
-        {status === "playing" ? (
-          <button type="button" className="mini-play-btn" onClick={pause} aria-label="Pausar"><PauseIcon /></button>
-        ) : status === "done" ? (
-          <button type="button" className="mini-play-btn mini-play-btn--done" onClick={replay} aria-label="Repetir"><ReplayIcon /></button>
-        ) : (
-          <button type="button" className="mini-play-btn" onClick={play} aria-label="Reproduzir"><PlayIcon /></button>
-        )}
+      <div className="mini-viz-footer">
+        <div className="mini-viz-controls">
+          {status === "playing" ? (
+            <button type="button" className="mini-play-btn" onClick={pause} aria-label={labels.pause}>
+              <PauseIcon />
+            </button>
+          ) : status === "done" ? (
+            <button
+              type="button"
+              className="mini-play-btn mini-play-btn--done"
+              onClick={replay}
+              aria-label={labels.replay}
+            >
+              <ReplayIcon />
+            </button>
+          ) : (
+            <button type="button" className="mini-play-btn" onClick={play} aria-label={labels.play}>
+              <PlayIcon />
+            </button>
+          )}
+          <span className="mini-viz-progress">
+            {labels.progress} {progressText}
+          </span>
+        </div>
+
+        <div className="mini-speed-stack">
+          <span className="mini-speed-caption">{labels.speed}</span>
+          <div className="mini-speed-control" role="group" aria-label={labels.speed}>
+            {MINI_SPEED_OPTIONS.map((option) => (
+              <button
+                key={option.label}
+                type="button"
+                className={`mini-speed-option ${speed === option.value ? "active" : ""}`}
+                aria-pressed={speed === option.value}
+                onClick={() => setSpeed(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

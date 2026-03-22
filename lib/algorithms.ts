@@ -265,6 +265,23 @@ def run(input_data):
     return arr
 `;
 
+const customTs = `
+function run(input: unknown) {
+  return input;
+}
+`;
+
+const customJs = `
+function run(input) {
+  return input;
+}
+`;
+
+const customPy = `
+def run(input_data):
+    return input_data
+`;
+
 const bfsTs = `
 type Grid = number[][];
 type Pos = [number, number];
@@ -621,6 +638,25 @@ export const algorithms: AlgorithmDefinition[] = [
       ts: selectionTs,
       js: selectionJs,
       python: selectionPy
+    }
+  },
+  {
+    id: "custom",
+    category: "sorting",
+    title: {
+      pt: "Algoritmo Custom",
+      en: "Custom Algorithm"
+    },
+    subtitle: {
+      pt: "Comece com um template minimo e emita seus proprios eventos.",
+      en: "Start from a minimal template and emit your own events."
+    },
+    complexity: { time: "—", space: "—" },
+    defaultInput: [6, 2, 9, 1, 7, 3],
+    templates: {
+      ts: customTs,
+      js: customJs,
+      python: customPy
     }
   },
   {
@@ -1217,6 +1253,10 @@ export function algorithmById(id: AlgorithmId): AlgorithmDefinition {
 }
 
 export function defaultInputText(id: AlgorithmId): string {
+  if (id === "custom") {
+    return "";
+  }
+
   const found = algorithmById(id);
   return JSON.stringify(found.defaultInput, null, 2);
 }

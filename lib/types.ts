@@ -8,6 +8,7 @@ export type AlgorithmId =
   | "bubble-sort"
   | "stalin-sort"
   | "selection-sort"
+  | "custom"
   | "bfs"
   | "dfs"
   | "cocktail-sort"

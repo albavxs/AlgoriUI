@@ -5,8 +5,7 @@ export const metadata: Metadata = {
   title: "AlgoriUI",
   description: "Visualizador de algoritmos com TypeScript, JavaScript e Python",
   icons: {
-    icon: "/logo.png",
-    apple: "/logo.png"
+    icon: "/logo.svg"
   }
 };
 
