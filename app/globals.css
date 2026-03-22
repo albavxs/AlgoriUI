@@ -1,18 +1,24 @@
 @import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap");
 
 :root {
-  --bg: #030405;
-  --bg-deep: #06080c;
+  --bg-top: #2a2d35;
+  --bg: #1b1e25;
+  --bg-deep: #12151b;
+  --bg-floor: #0b0e13;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --viz-stage-height: clamp(240px, 68vw, 336px);
-  --panel: rgba(10, 12, 16, 0.86);
-  --panel-strong: rgba(8, 10, 14, 0.94);
-  --panel-soft: rgba(14, 17, 24, 0.72);
-  --line: rgba(114, 126, 152, 0.24);
-  --line-strong: rgba(120, 135, 164, 0.34);
+  --panel: rgba(27, 31, 38, 0.6);
+  --panel-strong: rgba(18, 21, 28, 0.82);
+  --panel-soft: rgba(33, 37, 46, 0.54);
+  --surface-glass: rgba(255, 255, 255, 0.03);
+  --surface-glass-strong: rgba(255, 255, 255, 0.055);
+  --line: rgba(149, 160, 182, 0.16);
+  --line-strong: rgba(170, 182, 204, 0.26);
+  --shadow-soft: 0 18px 46px rgba(3, 5, 10, 0.22);
+  --shadow-strong: 0 26px 68px rgba(3, 5, 10, 0.28);
   --text: #f5f7fb;
   --muted: #9ca8c1;
   --muted-soft: #7984a0;
@@ -37,10 +43,10 @@ body {
 body {
   color: var(--text);
   background:
-    radial-gradient(circle at 50% 14%, rgba(255, 69, 58, 0.18), transparent 18%),
-    radial-gradient(circle at 22% 42%, rgba(34, 211, 238, 0.12), transparent 24%),
-    radial-gradient(circle at 78% 56%, rgba(50, 215, 75, 0.1), transparent 22%),
-    linear-gradient(180deg, #020304 0%, var(--bg) 36%, var(--bg-deep) 100%);
+    radial-gradient(circle at 20% 14%, rgba(255, 255, 255, 0.08), transparent 18%),
+    radial-gradient(circle at 82% 18%, rgba(153, 163, 186, 0.1), transparent 22%),
+    radial-gradient(circle at 50% 78%, rgba(96, 107, 130, 0.16), transparent 34%),
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg) 22%, var(--bg-deep) 58%, var(--bg-floor) 100%);
   font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -53,21 +59,22 @@ body::after {
 }
 
 body::before {
-  background-image:
-    linear-gradient(transparent 96%, rgba(98, 109, 136, 0.13) 97%),
-    linear-gradient(90deg, transparent 96%, rgba(98, 109, 136, 0.13) 97%);
-  background-size: 42px 42px;
-  opacity: 0.22;
+  background:
+    radial-gradient(circle at 14% 10%, rgba(255, 255, 255, 0.08), transparent 22%),
+    radial-gradient(circle at 86% 16%, rgba(178, 188, 210, 0.08), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 32%);
+  filter: blur(82px);
+  opacity: 0.74;
 }
 
 body::after {
   background:
-    radial-gradient(circle at 48% 18%, rgba(255, 69, 58, 0.22), transparent 24%),
-    radial-gradient(circle at 26% 50%, rgba(34, 211, 238, 0.18), transparent 28%),
-    radial-gradient(circle at 74% 60%, rgba(50, 215, 75, 0.13), transparent 24%);
-  filter: blur(62px);
-  opacity: 0.9;
-  animation: ambientShift 18s ease-in-out infinite alternate;
+    radial-gradient(circle at 46% 12%, rgba(119, 130, 153, 0.16), transparent 22%),
+    radial-gradient(circle at 24% 58%, rgba(90, 100, 121, 0.14), transparent 26%),
+    radial-gradient(circle at 78% 62%, rgba(72, 81, 100, 0.14), transparent 24%);
+  filter: blur(88px);
+  opacity: 0.76;
+  animation: ambientShift 24s ease-in-out infinite alternate;
 }
 
 @keyframes ambientShift {
@@ -95,7 +102,7 @@ input[type="range"] {
 button {
   appearance: none;
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--surface-glass);
   color: var(--text);
   border-radius: 12px;
   padding: 10px 14px;
@@ -111,7 +118,7 @@ button {
 button:hover {
   transform: translateY(-1px);
   border-color: rgba(144, 155, 180, 0.34);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-glass-strong);
 }
 
 button:disabled {
@@ -121,7 +128,7 @@ button:disabled {
 }
 
 button.primary {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.065);
   border-color: rgba(194, 203, 224, 0.26);
   color: #ffffff;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -133,8 +140,8 @@ textarea {
   border-radius: 12px;
   border: 1px solid rgba(132, 145, 173, 0.12);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.008)),
-    rgba(10, 13, 18, 0.8);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.012)),
+    rgba(17, 20, 27, 0.78);
   color: var(--text);
   padding: 11px 12px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.018);
@@ -160,8 +167,8 @@ select:hover,
 textarea:hover {
   border-color: rgba(174, 184, 206, 0.14);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.012)),
-    rgba(10, 13, 18, 0.84);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.036), rgba(255, 255, 255, 0.016)),
+    rgba(17, 20, 27, 0.84);
 }
 
 select:focus,
@@ -274,11 +281,12 @@ input[type="range"]:disabled {
 .app-shell::before {
   z-index: -3;
   background:
+    radial-gradient(circle at 16% 12%, rgba(255, 255, 255, 0.06), transparent 22%),
     radial-gradient(circle at 48% 15%, var(--ambient-body-a, rgba(255, 69, 58, 0.14)), transparent 18%),
     radial-gradient(circle at 22% 44%, var(--ambient-body-b, rgba(34, 211, 238, 0.1)), transparent 24%),
     radial-gradient(circle at 80% 58%, var(--ambient-body-c, rgba(50, 215, 75, 0.08)), transparent 22%);
-  filter: blur(78px);
-  opacity: 0.9;
+  filter: blur(106px);
+  opacity: 0.5;
 }
 
 .app-shell::after {
@@ -286,11 +294,12 @@ input[type="range"]:disabled {
   inset: 4% 0 auto;
   height: 52vh;
   background:
+    radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.05), transparent 20%),
     radial-gradient(circle at 50% 14%, var(--ambient-hero-a, rgba(255, 69, 58, 0.18)), transparent 24%),
     radial-gradient(circle at 26% 70%, var(--ambient-hero-b, rgba(34, 211, 238, 0.12)), transparent 28%),
     radial-gradient(circle at 78% 72%, var(--ambient-hero-c, rgba(50, 215, 75, 0.08)), transparent 24%);
-  filter: blur(50px);
-  opacity: 0.95;
+  filter: blur(78px);
+  opacity: 0.52;
 }
 
 .site-topbar {
@@ -300,16 +309,12 @@ input[type="range"]:disabled {
   gap: 12px;
   min-width: 0;
   min-height: 52px;
-  padding: 10px 12px;
-  border-radius: 20px;
-  border: 1px solid rgba(128, 141, 170, 0.14);
-  background:
-    linear-gradient(180deg, rgba(18, 22, 30, 0.82), rgba(10, 13, 18, 0.54)),
-    rgba(8, 10, 14, 0.48);
-  backdrop-filter: blur(22px) saturate(150%);
-  box-shadow:
-    0 18px 40px rgba(0, 0, 0, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  padding: 8px 2px 0;
+  border-radius: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
 }
 
 .brand-mark {
@@ -346,7 +351,7 @@ input[type="range"]:disabled {
   height: 36px;
   border-radius: 10px;
   border: 1px solid rgba(184, 194, 218, 0.12);
-  background: rgba(255, 255, 255, 0.018);
+  background: var(--surface-glass);
   color: var(--muted);
   text-decoration: none;
   transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
@@ -355,7 +360,7 @@ input[type="range"]:disabled {
 .github-link:hover {
   color: var(--text);
   border-color: rgba(184, 194, 218, 0.26);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-glass-strong);
 }
 
 .github-icon {
@@ -372,7 +377,7 @@ input[type="range"]:disabled {
   padding: 0 12px;
   border-radius: 10px;
   border: 1px solid rgba(184, 194, 218, 0.14);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-glass);
   color: var(--text);
   font-size: 0.84rem;
   font-weight: 600;
@@ -382,7 +387,7 @@ input[type="range"]:disabled {
 
 .topbar-learn-link:hover {
   border-color: rgba(184, 194, 218, 0.24);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-glass-strong);
 }
 
 .topbar-learn-arrow {
@@ -393,7 +398,7 @@ input[type="range"]:disabled {
   position: relative;
   display: grid;
   gap: 14px;
-  padding: 32px 2px 4px;
+  padding: 40px 2px 8px;
 }
 
 .hero-stage::before {
@@ -445,12 +450,14 @@ input[type="range"]:disabled {
   padding: 8px 14px;
   border-radius: 15px;
   border: 1px solid rgba(126, 140, 172, 0.38);
-  background: rgba(14, 17, 24, 0.74);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.012)),
+    rgba(18, 22, 29, 0.7);
   color: #93dfff;
   font-size: 0.98rem;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
-    0 8px 20px rgba(0, 0, 0, 0.22);
+    0 12px 28px rgba(3, 5, 10, 0.18);
 }
 
 .bars-wrap,
@@ -552,21 +559,27 @@ input[type="range"]:disabled {
 .event-panel {
   border-radius: 22px;
   border: 1px solid var(--line);
-  background: var(--panel);
-  backdrop-filter: blur(18px);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.042), rgba(255, 255, 255, 0.012)),
+    var(--panel);
+  backdrop-filter: blur(26px) saturate(145%);
   box-shadow:
-    0 20px 44px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    var(--shadow-soft),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .code-window {
   position: relative;
   overflow: visible;
-  background: var(--panel-strong);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.008)),
+    var(--panel-strong);
 }
 
 .code-window.mobile-collapsed {
-  background: rgba(9, 11, 16, 0.92);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.008)),
+    rgba(16, 19, 25, 0.92);
 }
 
 .window-header {
@@ -576,7 +589,9 @@ input[type="range"]:disabled {
   gap: 12px;
   padding: 10px 12px;
   border-bottom: 1px solid rgba(115, 128, 157, 0.22);
-  background: rgba(7, 9, 13, 0.94);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.01)),
+    rgba(15, 18, 24, 0.88);
 }
 
 .window-tabs {
@@ -835,7 +850,7 @@ input[type="range"]:disabled {
 
 .editor-shell {
   min-height: 360px;
-  background: #090b12;
+  background: rgba(13, 16, 22, 0.94);
 }
 
 .editor-panel {
@@ -888,8 +903,8 @@ input[type="range"]:disabled {
   border-radius: 16px;
   border: 1px solid rgba(118, 132, 164, 0.14);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0.006)),
-    rgba(11, 14, 19, 0.58);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.034), rgba(255, 255, 255, 0.01)),
+    rgba(18, 21, 28, 0.54);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
 }
 
@@ -1106,6 +1121,14 @@ input[type="range"]:disabled {
     padding: 9px 10px;
     border-radius: 18px;
     gap: 8px;
+    border-color: rgba(128, 141, 170, 0.14);
+    background:
+      linear-gradient(180deg, rgba(20, 24, 34, 0.84), rgba(10, 13, 20, 0.58)),
+      rgba(8, 10, 16, 0.44);
+    backdrop-filter: blur(22px) saturate(155%);
+    box-shadow:
+      var(--shadow-soft),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
   }
 
   .brand-logo {
@@ -1140,7 +1163,7 @@ input[type="range"]:disabled {
 
   .hero-stage {
     gap: 12px;
-    padding-top: 24px;
+    padding-top: 30px;
   }
 
   .bars-wrap,
@@ -1648,6 +1671,7 @@ input[type="range"]:disabled {
 
 /* ── Mobile: prevent iOS auto-zoom on input focus ─────────────────────────── */
 @media (max-width: 768px) {
+  select,
   textarea,
   input:not([type="range"]):not([type="file"]):not([type="checkbox"]) {
     font-size: 16px;
