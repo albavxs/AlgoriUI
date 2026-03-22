@@ -53,9 +53,17 @@
 
 ---
 
-## Rodar local / Run locally
+## Quick Start
 
 ```bash
+curl -sL https://raw.githubusercontent.com/albavxs/AlgoriUI/main/setup.sh | bash
+```
+
+Ou manualmente / Or manually:
+
+```bash
+git clone https://github.com/albavxs/AlgoriUI.git
+cd AlgoriUI
 npm install
 npm run dev
 ```
