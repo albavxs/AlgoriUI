@@ -1164,8 +1164,9 @@ input[type="range"]:disabled {
 .mobile-picker-sheet {
   position: relative;
   width: min(100%, 520px);
-  max-height: min(76vh, 620px);
+  max-height: min(82dvh, 700px);
   display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 14px;
   overflow: hidden;
   border-radius: 28px 28px 22px 22px;
@@ -1177,7 +1178,7 @@ input[type="range"]:disabled {
   box-shadow:
     0 30px 60px rgba(0, 0, 0, 0.36),
     inset 0 1px 0 rgba(255, 255, 255, 0.07);
-  padding: 10px 12px 12px;
+  padding: 10px 12px calc(12px + var(--safe-bottom));
 }
 
 .mobile-picker-grabber {
@@ -1217,8 +1218,13 @@ input[type="range"]:disabled {
 .mobile-picker-options {
   display: grid;
   gap: 8px;
+  min-height: 0;
+  max-height: 100%;
   overflow: auto;
-  padding-right: 2px;
+  padding: 0 2px 2px 0;
+  align-content: start;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .mobile-picker-option {
