@@ -32,6 +32,7 @@ const MINI_SOUND_PROFILE = {
 };
 
 const MINI_SPEED_OPTIONS = [
+  { value: 0.5, label: "0.5x" },
   { value: 0.75, label: "0.75x" },
   { value: 1, label: "1x" },
   { value: 1.5, label: "1.5x" },
@@ -88,7 +89,7 @@ function playMiniBeep(frequency: number) {
 type SortStep   = { kind: "sort";   arr: number[]; hi?: number; hj?: number; keptCount?: number; accepted?: boolean; done?: boolean; };
 type HeapStep   = { kind: "heap";   arr: number[]; hi?: number; hj?: number; heapSize: number; done?: boolean; };
 type BucketStep = { kind: "bucket"; arr: number[]; buckets: number[][]; activeBucket?: number; done?: boolean; };
-type RadixStep  = { kind: "radix";  arr: number[]; pass: number; counts?: number[]; activeIdx?: number; done?: boolean; };
+type RadixStep  = { kind: "radix";  arr: number[]; pass: number; counts?: number[]; output?: number[]; activeIdx?: number; done?: boolean; };
 type MazeStep   = { kind: "maze";   row: number; col: number; visited: [number, number][]; path?: [number, number][]; done?: boolean; };
 
 type Step = SortStep | HeapStep | BucketStep | RadixStep | MazeStep;
@@ -197,12 +198,12 @@ function radixSortSteps(): Step[] {
     for (const v of a) count[Math.floor(v / exp) % 10]++;
     for (let i = 1; i < 10; i++) count[i] += count[i - 1];
     const countSnapshot = [...count];
-    const output = new Array(a.length);
+    const output = new Array(a.length).fill(0);
     const workCount = [...count];
     for (let i = a.length - 1; i >= 0; i--) {
       const d = Math.floor(a[i] / exp) % 10;
       output[--workCount[d]] = a[i];
-      out.push({ kind: "radix", arr: [...a], pass, counts: [...countSnapshot], activeIdx: i });
+      out.push({ kind: "radix", arr: [...a], pass, counts: [...countSnapshot], output: [...output], activeIdx: i });
     }
     for (let i = 0; i < a.length; i++) a[i] = output[i];
     out.push({ kind: "radix", arr: [...a], pass });
@@ -436,23 +437,24 @@ function MiniBucketView({ step }: { step: BucketStep }) {
 }
 
 // Radix: bars + pass label + counts row (matches home page)
-const PASS_NAMES = ["UNIDADES", "DEZENAS", "CENTENAS"];
+const PASS_NAMES = ["Unidades", "Dezenas", "Centenas", "Milhares"];
 
 function MiniRadixView({ step }: { step: RadixStep }) {
   const max = Math.max(...step.arr, 1);
+  const output = step.output ?? [];
   return (
     <div className="mini-radix-wrap">
       <div className="mini-bars" style={{ flex: 1 }}>
         {step.arr.map((v, i) => {
           const isActive = i === step.activeIdx;
-          let bg = "rgba(34,211,238,0.35)";
+          let bg = "rgba(34,211,238,0.55)";
           if (step.done) bg = "rgba(50,215,75,0.55)";
           else if (isActive) bg = "var(--amber)";
           return <div key={i} className="mini-bar" style={{ height: `${Math.max((v / max) * 100, 4)}%`, background: bg }} />;
         })}
       </div>
       {!step.done && (
-        <div className="mini-radix-pass">{PASS_NAMES[step.pass] ?? `PASS ${step.pass + 1}`}</div>
+        <div className="mini-radix-pass">{PASS_NAMES[step.pass] ?? `×${Math.pow(10, step.pass)}`}</div>
       )}
       {!step.done && step.counts && (
         <div className="mini-radix-counts">
@@ -463,6 +465,18 @@ function MiniRadixView({ step }: { step: RadixStep }) {
             }}>
               <span className="mini-radix-cell-digit">{d}</span>
               <span className="mini-radix-cell-val">{c}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {!step.done && output.length > 0 && (
+        <div className="mini-radix-output">
+          {output.map((val, idx) => (
+            <div key={idx} className="mini-radix-out-cell" style={{
+              background: val !== 0 ? "rgba(50,215,75,0.14)" : "rgba(30,41,59,0.4)",
+              borderColor: val !== 0 ? "rgba(50,215,75,0.3)" : "rgba(100,116,139,0.15)"
+            }}>
+              {val !== 0 ? val : ""}
             </div>
           ))}
         </div>

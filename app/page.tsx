@@ -1469,7 +1469,7 @@ export default function HomePage() {
 
   async function runCode() {
     const parsed = parseInputJson(inputText);
-    if (!parsed.ok) {
+    if (!parsed.ok || !Array.isArray(parsed.value)) {
       setStderrText(t(locale, "invalidInput"));
       return;
     }
