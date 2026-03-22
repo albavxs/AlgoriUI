@@ -39,7 +39,7 @@ type SoundProfile = {
   doneGain: number;
 };
 
-const soundProfiles: Record<SoundPreset, SoundProfile> = {
+const soundProfiles: Record<Exclude<SoundPreset, "piano">, SoundProfile> = {
   soft: {
     volumeScale: 0.72,
     reverb: 0.08,
@@ -78,10 +78,11 @@ const languageMeta: Record<Language, { badge: string }> = {
   python: { badge: "PY" }
 };
 
-const presetLabelKey: Record<SoundPreset, "presetSoft" | "presetBalanced" | "presetPunchy"> = {
+const presetLabelKey: Record<SoundPreset, "presetSoft" | "presetBalanced" | "presetPunchy" | "presetPiano"> = {
   soft: "presetSoft",
   balanced: "presetBalanced",
-  punchy: "presetPunchy"
+  punchy: "presetPunchy",
+  piano: "presetPiano"
 };
 
 const wrapLabelKey: Record<EditorWrapMode, "wrapAuto" | "wrapOn" | "wrapOff"> = {
@@ -199,6 +200,16 @@ function RunAnimationIcon({ className }: IconProps) {
         strokeWidth="0.6"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function SiteMenuIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M4 6H16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M4 10H16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M4 14H16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   );
 }
@@ -420,6 +431,7 @@ export default function HomePage() {
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [isCodeCollapsed, setIsCodeCollapsed] = useState(false);
   const [isEditorMenuOpen, setIsEditorMenuOpen] = useState(false);
+  const [isSiteMenuOpen, setIsSiteMenuOpen] = useState(false);
   const [visualizerSession, setVisualizerSession] = useState(0);
 
   const importRef = useRef<HTMLInputElement>(null);
@@ -498,8 +510,17 @@ export default function HomePage() {
       setStatusNote(t(payload.locale, "loadFromShare"));
     }
 
+    // Deep-link from /aprenda page: ?algorithm=heap-sort etc.
+    const algorithmParam = url.searchParams.get("algorithm");
+    if (algorithmParam && !share) {
+      const algo = algorithms.find((a) => a.id === algorithmParam);
+      if (algo) {
+        setAlgorithm(algo.id as typeof selectedAlgorithmId);
+      }
+    }
+
     shareLoadedRef.current = true;
-  }, [hydrateFromShare, resetPlaybackState]);
+  }, [hydrateFromShare, resetPlaybackState, setAlgorithm, selectedAlgorithmId]);
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -609,7 +630,8 @@ export default function HomePage() {
       return null;
     }
 
-    const profile = soundProfiles[soundPreset];
+    const profilePreset = soundPreset === "piano" ? "balanced" : soundPreset;
+    const profile = soundProfiles[profilePreset];
 
     if (!audioRigRef.current) {
       const AudioCtor =
@@ -768,6 +790,25 @@ export default function HomePage() {
     });
   }
 
+  function playPianoNote(rig: AudioRig, value: number, maxValue: number, when = 0) {
+    const minFreq = 130.81; // C3
+    const maxFreq = 1046.5; // C6
+    const ratio = Math.max(0, Math.min(1, value / Math.max(maxValue, 1)));
+    const freq = minFreq * Math.pow(maxFreq / minFreq, ratio);
+    const t = rig.context.currentTime + when;
+    const osc = rig.context.createOscillator();
+    const gain = rig.context.createGain();
+    osc.connect(gain);
+    gain.connect(rig.master);
+    osc.type = "triangle";
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(soundVolume * 0.14, t + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
+    osc.start(t);
+    osc.stop(t + 0.46);
+  }
+
   async function playEventSound(event: TraceEvent) {
     if (!soundEnabled) {
       return;
@@ -778,8 +819,40 @@ export default function HomePage() {
       return;
     }
 
-    const profile = soundProfiles[soundPreset];
     const eventType = String(event.t ?? "");
+
+    // Piano preset — pitched notes mapped to array values
+    if (soundPreset === "piano") {
+      const arr = Array.isArray(event.arr) ? (event.arr as number[]) : [];
+      const maxVal = arr.length ? Math.max(...arr, 1) : 1;
+      if (eventType === "compare" || eventType === "heapify") {
+        const i = typeof event.i === "number" ? event.i : 0;
+        playPianoNote(rig, arr[i] ?? maxVal / 2, maxVal);
+        return;
+      }
+      if (eventType === "swap" || eventType === "extract") {
+        const i = typeof event.i === "number" ? event.i : 0;
+        const j = typeof event.j === "number" ? event.j : 0;
+        playPianoNote(rig, arr[i] ?? maxVal / 2, maxVal);
+        playPianoNote(rig, arr[j] ?? maxVal / 2, maxVal, 0.09);
+        return;
+      }
+      if (eventType === "distribute" || eventType === "counting" || eventType === "placing") {
+        const activeIdx = typeof event.activeIdx === "number" ? event.activeIdx : (typeof event.i === "number" ? event.i : 0);
+        playPianoNote(rig, arr[activeIdx] ?? maxVal / 2, maxVal);
+        return;
+      }
+      if (eventType === "done" && arr.length > 0) {
+        arr.slice(0, 12).forEach((val, idx) => {
+          playPianoNote(rig, val, maxVal, idx * 0.07);
+        });
+        return;
+      }
+      return;
+    }
+
+    // soundPreset is narrowed to Exclude<SoundPreset, "piano"> here (piano handled above)
+    const profile = soundProfiles[soundPreset];
 
     if (eventType === "compare" || eventType === "search-window") {
       playOsc(rig, {
@@ -842,6 +915,30 @@ export default function HomePage() {
         });
         playNoise(rig, { duration: 0.045, gain: profile.swapNoise, highpass: 900 });
       }
+      return;
+    }
+
+    if (eventType === "distribute" || eventType === "counting" || eventType === "placing") {
+      const arr = Array.isArray(event.arr) ? (event.arr as number[]) : [];
+      const maxVal = arr.length ? Math.max(...arr, 1) : 1;
+      const activeIdx = typeof event.activeIdx === "number" ? event.activeIdx : (typeof event.i === "number" ? event.i : 0);
+      const val = arr[activeIdx] ?? maxVal / 2;
+      playOsc(rig, {
+        frequency: 300 + (val / maxVal) * 420,
+        type: "triangle",
+        duration: 0.04,
+        gain: profile.compareGain
+      });
+      return;
+    }
+
+    if (eventType === "merge") {
+      playOsc(rig, {
+        frequency: 580,
+        type: "sine",
+        duration: 0.05,
+        gain: Math.max(profile.compareGain, 0.035)
+      });
       return;
     }
 
@@ -1045,7 +1142,64 @@ export default function HomePage() {
   return (
     <main className="app-shell" style={ambientStyle}>
       <header className="site-topbar">
-        <div className="brand-mark">AlgorUI</div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="AlgoriUI" className="brand-logo" />
+        <div className="topbar-right">
+          <a
+            href="https://github.com/albavxs/AlgoriUI"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="github-link"
+            aria-label="GitHub"
+          >
+            <svg className="github-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+            </svg>
+          </a>
+          <div className="site-menu-wrap">
+          <button
+            type="button"
+            className={`site-menu-trigger ${isSiteMenuOpen ? "active" : ""}`}
+            onClick={() => setIsSiteMenuOpen((v) => !v)}
+            aria-label="Menu"
+            aria-expanded={isSiteMenuOpen}
+          >
+            <SiteMenuIcon className="editor-tool-icon" />
+          </button>
+          <AnimatePresence>
+            {isSiteMenuOpen && (
+              <motion.div
+                key="site-menu-dropdown"
+                className="site-menu-dropdown"
+                initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+              >
+                <div className="site-menu-locale">
+                  {(["pt", "en"] as const).map((loc) => (
+                    <button
+                      key={loc}
+                      type="button"
+                      className={`locale-pill ${locale === loc ? "active" : ""}`}
+                      onClick={() => setLocale(loc)}
+                    >
+                      {localeLabel[loc]}
+                    </button>
+                  ))}
+                </div>
+                <a
+                  href="/aprenda"
+                  className="site-menu-learn"
+                  onClick={() => setIsSiteMenuOpen(false)}
+                >
+                  {t(locale, "learnMore")} →
+                </a>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          </div>
+        </div>
       </header>
 
       <section className="hero-stage">
@@ -1060,7 +1214,7 @@ export default function HomePage() {
 
         <Visualizer
           key={`${selectedAlgorithmId}-${selectedLanguage}-${visualizerSession}`}
-          category={algorithm.category}
+          visualizer={algorithm.visualizer ?? (algorithm.category === "graph" ? "graph" : "sorting")}
           events={events}
           currentIndex={currentIndex}
           emptyLabel={t(locale, "noEvents")}
@@ -1135,6 +1289,16 @@ export default function HomePage() {
               >
                 <AddFileIcon className="file-add-icon" />
               </motion.button>
+              <button
+                type="button"
+                className="editor-tool-chip file-add-inline"
+                onClick={() => setIsCodeCollapsed((value) => !value)}
+                title={isCodeCollapsed ? t(locale, "expandCode") : t(locale, "collapseCode")}
+                aria-expanded={!isCodeCollapsed}
+                aria-label={isCodeCollapsed ? t(locale, "expandCode") : t(locale, "collapseCode")}
+              >
+                <CollapseCodeIcon className="editor-tool-icon" collapsed={isCodeCollapsed} />
+              </button>
             </div>
             <div className="editor-toolbar">
               <div className="editor-toolbar-mobile mobile-only">
@@ -1149,6 +1313,16 @@ export default function HomePage() {
                 </button>
                 <button
                   type="button"
+                  className="editor-tool-chip"
+                  onClick={() => setIsCodeCollapsed((value) => !value)}
+                  title={isCodeCollapsed ? t(locale, "expandCode") : t(locale, "collapseCode")}
+                  aria-expanded={!isCodeCollapsed}
+                  aria-label={isCodeCollapsed ? t(locale, "expandCode") : t(locale, "collapseCode")}
+                >
+                  <CollapseCodeIcon className="editor-tool-icon" collapsed={isCodeCollapsed} />
+                </button>
+                <button
+                  type="button"
                   className="editor-tool-chip editor-run-button"
                   onClick={runCode}
                   disabled={isRunning}
@@ -1159,6 +1333,16 @@ export default function HomePage() {
                 </button>
               </div>
               <div className="editor-toolbar-desktop">
+                <button
+                  type="button"
+                  className="editor-tool-chip editor-run-button"
+                  onClick={runCode}
+                  disabled={isRunning}
+                  aria-label={isRunning ? t(locale, "running") : t(locale, "run")}
+                  title={isRunning ? t(locale, "running") : t(locale, "run")}
+                >
+                  <RunAnimationIcon className="editor-tool-icon" />
+                </button>
                 <div className="editor-tool-group" aria-label={t(locale, "wrapMode")}>
                   {(["auto", "wrap", "nowrap"] as const).map((mode) => (
                     <button
@@ -1268,19 +1452,6 @@ export default function HomePage() {
                   <FontLargeIcon className="editor-tool-icon" />
                 </button>
               </div>
-              <button
-                type="button"
-                className="editor-tool-chip editor-mobile-action"
-                onClick={() => {
-                  setIsCodeCollapsed((value) => !value);
-                  setIsEditorMenuOpen(false);
-                }}
-                title={isCodeCollapsed ? t(locale, "expandCode") : t(locale, "collapseCode")}
-                aria-expanded={!isCodeCollapsed}
-                aria-label={isCodeCollapsed ? t(locale, "expandCode") : t(locale, "collapseCode")}
-              >
-                <CollapseCodeIcon className="editor-tool-icon" collapsed={isCodeCollapsed} />
-              </button>
             </motion.div>
           ) : null}
         </AnimatePresence>
@@ -1410,6 +1581,7 @@ export default function HomePage() {
                 <option value="soft">{t(locale, "presetSoft")}</option>
                 <option value="balanced">{t(locale, "presetBalanced")}</option>
                 <option value="punchy">{t(locale, "presetPunchy")}</option>
+                <option value="piano">{t(locale, "presetPiano")}</option>
               </select>
             </label>
 
@@ -1442,11 +1614,13 @@ export default function HomePage() {
                 resetPlaybackState(true);
               }}
             >
-              {algorithms.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.title[locale]}
-                </option>
-              ))}
+              {[...algorithms]
+                .sort((a, b) => a.title[locale].localeCompare(b.title[locale], locale))
+                .map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.title[locale]}
+                  </option>
+                ))}
             </select>
           </label>
 

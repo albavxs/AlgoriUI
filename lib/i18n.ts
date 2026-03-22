@@ -53,7 +53,18 @@ export const messages = {
     fontDecrease: "Diminuir fonte",
     fontIncrease: "Aumentar fonte",
     collapseCode: "Recolher código",
-    expandCode: "Expandir código"
+    expandCode: "Expandir código",
+    presetPiano: "Piano",
+    learnMore: "Saiba Mais",
+    learnPageTitle: "Entendendo Algoritmos",
+    learnPageSubtitle: "Um guia visual baseado no livro de Aditya Bhargava.",
+    learnBack: "Voltar ao editor",
+    learnHowToUse: "Como usar o editor",
+    learnHowToUseBody: "Escreva sua função run(), chame emitStep() para cada passo e clique em Executar. O visualizador anima cada evento automaticamente.",
+    learnTryInEditor: "Abrir no editor",
+    learnImagePlaceholder: "Ilustração do algoritmo",
+    learnCategorySort: "Ordenação",
+    learnCategoryGraph: "Grafos"
   },
   en: {
     appTitle: "AlgoriUI",
@@ -107,7 +118,18 @@ export const messages = {
     fontDecrease: "Decrease font",
     fontIncrease: "Increase font",
     collapseCode: "Collapse code",
-    expandCode: "Expand code"
+    expandCode: "Expand code",
+    presetPiano: "Piano",
+    learnMore: "Learn More",
+    learnPageTitle: "Understanding Algorithms",
+    learnPageSubtitle: "A visual guide based on the book by Aditya Bhargava.",
+    learnBack: "Back to editor",
+    learnHowToUse: "How to use the editor",
+    learnHowToUseBody: "Write your run() function, call emitStep() for each step, then click Run. The visualizer animates every event automatically.",
+    learnTryInEditor: "Open in editor",
+    learnImagePlaceholder: "Algorithm illustration",
+    learnCategorySort: "Sorting",
+    learnCategoryGraph: "Graphs"
   }
 } as const;
 

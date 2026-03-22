@@ -384,7 +384,7 @@ export const useAppStore = create<AppStore>()(
     }),
     {
       name: "algoriui-store",
-      version: 3,
+      version: 6,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         locale: state.locale,
@@ -406,9 +406,22 @@ export const useAppStore = create<AppStore>()(
         };
 
         const selectedAlgorithmId = canonicalAlgorithmId(state.selectedAlgorithmId ?? "stalin-sort");
-        const projectMap = state.projectMap
-          ? mergeProjectMap(state.projectMap as Partial<ProjectMap>)
+
+        // v5: BFS/DFS migrated from graph to maze format — reset their code and inputs
+        const projectMapBase = state.projectMap ? { ...state.projectMap } : undefined;
+        if (projectMapBase) {
+          delete (projectMapBase as Record<string, unknown>)["bfs"];
+          delete (projectMapBase as Record<string, unknown>)["dfs"];
+        }
+        const projectMap = projectMapBase
+          ? mergeProjectMap(projectMapBase as Partial<ProjectMap>)
           : migrateLegacyCodeMap(state.codeMap);
+
+        const inputMapBase: Partial<InputMap> & Record<string, string> = state.inputMap
+          ? { ...state.inputMap }
+          : {};
+        delete (inputMapBase as Record<string, unknown>)["bfs"];
+        delete (inputMapBase as Record<string, unknown>)["dfs"];
 
         return {
           locale: state.locale ?? "pt",
@@ -418,7 +431,7 @@ export const useAppStore = create<AppStore>()(
           soundPreset: state.soundPreset ?? "punchy",
           editorWrapMode: state.editorWrapMode ?? "auto",
           editorFontMode: state.editorFontMode ?? "md",
-          inputMap: mergeInputMap(state.inputMap),
+          inputMap: mergeInputMap(inputMapBase),
           projectMap
         };
       }

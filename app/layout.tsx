@@ -3,7 +3,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "AlgoriUI",
-  description: "Visualizador de algoritmos com TypeScript, JavaScript e Python"
+  description: "Visualizador de algoritmos com TypeScript, JavaScript e Python",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png"
+  }
 };
 
 export const viewport: Viewport = {

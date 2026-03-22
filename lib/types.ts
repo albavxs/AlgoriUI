@@ -9,7 +9,13 @@ export type AlgorithmId =
   | "stalin-sort"
   | "selection-sort"
   | "bfs"
-  | "dfs";
+  | "dfs"
+  | "cocktail-sort"
+  | "heap-sort"
+  | "bucket-sort"
+  | "radix-sort";
+
+export type VisualizerType = "sorting" | "heap" | "bucket" | "radix" | "graph" | "maze";
 
 export type TraceEvent = {
   t: string;
@@ -28,7 +34,7 @@ export type CodeProject = {
   entrypoint: string;
 };
 
-export type SoundPreset = "soft" | "balanced" | "punchy";
+export type SoundPreset = "soft" | "balanced" | "punchy" | "piano";
 
 export type ExecutionRequest = {
   language: Language;
@@ -50,6 +56,7 @@ export type ExecutionResult = {
 export type AlgorithmDefinition = {
   id: AlgorithmId;
   category: AlgorithmCategory;
+  visualizer?: VisualizerType;
   title: Record<Locale, string>;
   subtitle: Record<Locale, string>;
   complexity: {
