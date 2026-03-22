@@ -600,6 +600,45 @@ input[type="range"]:disabled {
     var(--panel-strong);
 }
 
+.code-window.editor-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.code-window.editor-fullscreen .window-header {
+  flex-shrink: 0;
+}
+
+.code-window.editor-fullscreen .editor-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.code-window.editor-fullscreen .editor-shell {
+  flex: 1;
+  min-height: 0;
+}
+
+.code-window.editor-fullscreen .editor-shell > div,
+.code-window.editor-fullscreen .editor-shell .monaco-editor,
+.code-window.editor-fullscreen .editor-shell .monaco-editor-background,
+.code-window.editor-fullscreen .editor-shell .overflow-guard,
+.code-window.editor-fullscreen .editor-shell .monaco-scrollable-element {
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
+.editor-fullscreen-back {
+  gap: 4px;
+}
+
 .code-window.mobile-collapsed {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.008)),

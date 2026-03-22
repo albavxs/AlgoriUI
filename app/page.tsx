@@ -210,6 +210,36 @@ function EditorMenuIcon({ className }: IconProps) {
   );
 }
 
+function FullscreenIcon({ className, active }: IconProps & { active: boolean }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      {active ? (
+        <>
+          <path d="M8 4.5V7.5H5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M12 4.5V7.5H15" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M8 15.5V12.5H5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M12 15.5V12.5H15" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      ) : (
+        <>
+          <path d="M5 4.5H8V7.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M15 4.5H12V7.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M5 15.5H8V12.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M15 15.5H12V12.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+function FullscreenBackIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M11 4L5.5 10L11 16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function CollapseCodeIcon({ className, collapsed }: IconProps & { collapsed: boolean }) {
   return (
     <svg className={className} viewBox="0 0 20 20" fill="none" aria-hidden="true">
@@ -710,6 +740,7 @@ export default function HomePage() {
   const [autoPlayPending, setAutoPlayPending] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [isCodeCollapsed, setIsCodeCollapsed] = useState(false);
+  const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
   const [isEditorMenuOpen, setIsEditorMenuOpen] = useState(false);
   const [isSiteMenuOpen, setIsSiteMenuOpen] = useState(false);
   const [activeMobilePicker, setActiveMobilePicker] = useState<MobilePickerName | null>(null);
@@ -866,7 +897,19 @@ export default function HomePage() {
 
     const frame = window.requestAnimationFrame(() => editor.layout());
     return () => window.cancelAnimationFrame(frame);
-  }, [activeFile.id, editorFontMode, editorWrapMode, isCodeCollapsed, selectedAlgorithmId, selectedLanguage]);
+  }, [activeFile.id, editorFontMode, editorWrapMode, isCodeCollapsed, isEditorFullscreen, selectedAlgorithmId, selectedLanguage]);
+
+  useEffect(() => {
+    if (!isEditorFullscreen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setIsEditorFullscreen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [isEditorFullscreen]);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -1180,20 +1223,49 @@ export default function HomePage() {
       gain?: number;
     }
   ) {
-    const duration = options?.duration ?? 0.46;
+    const duration = options?.duration ?? 0.52;
     const peakGain = options?.gain ?? soundVolume * 0.14;
     const t = rig.context.currentTime + when;
-    const osc = rig.context.createOscillator();
-    const gain = rig.context.createGain();
-    osc.connect(gain);
-    gain.connect(rig.master);
-    osc.type = "triangle";
-    osc.frequency.value = frequency;
-    gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(peakGain, t + 0.012);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
-    osc.start(t);
-    osc.stop(t + duration + 0.04);
+
+    // Fundamental — clean sine
+    const osc1 = rig.context.createOscillator();
+    const g1 = rig.context.createGain();
+    osc1.type = "sine";
+    osc1.frequency.value = frequency;
+    osc1.connect(g1);
+    g1.connect(rig.master);
+    g1.gain.setValueAtTime(0, t);
+    g1.gain.linearRampToValueAtTime(peakGain, t + 0.006);
+    g1.gain.exponentialRampToValueAtTime(peakGain * 0.35, t + 0.12);
+    g1.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+    osc1.start(t);
+    osc1.stop(t + duration + 0.04);
+
+    // 2nd harmonic — adds brightness
+    const osc2 = rig.context.createOscillator();
+    const g2 = rig.context.createGain();
+    osc2.type = "sine";
+    osc2.frequency.value = frequency * 2;
+    osc2.connect(g2);
+    g2.connect(rig.master);
+    g2.gain.setValueAtTime(0, t);
+    g2.gain.linearRampToValueAtTime(peakGain * 0.3, t + 0.004);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t + duration * 0.5);
+    osc2.start(t);
+    osc2.stop(t + duration * 0.5 + 0.04);
+
+    // 3rd harmonic — subtle warmth
+    const osc3 = rig.context.createOscillator();
+    const g3 = rig.context.createGain();
+    osc3.type = "sine";
+    osc3.frequency.value = frequency * 3;
+    osc3.connect(g3);
+    g3.connect(rig.master);
+    g3.gain.setValueAtTime(0, t);
+    g3.gain.linearRampToValueAtTime(peakGain * 0.1, t + 0.003);
+    g3.gain.exponentialRampToValueAtTime(0.0001, t + duration * 0.25);
+    osc3.start(t);
+    osc3.stop(t + duration * 0.25 + 0.04);
   }
 
   function playPianoNote(rig: AudioRig, value: number, maxValue: number, when = 0) {
@@ -1469,7 +1541,7 @@ export default function HomePage() {
 
   async function runCode() {
     const parsed = parseInputJson(inputText);
-    if (!parsed.ok || !Array.isArray(parsed.value)) {
+    if (!parsed.ok || parsed.value == null || typeof parsed.value !== "object") {
       setStderrText(t(locale, "invalidInput"));
       return;
     }
@@ -1758,7 +1830,7 @@ export default function HomePage() {
         />
       </section>
 
-      <section className={`code-window ${isCodeCollapsed ? "mobile-collapsed" : ""}`}>
+      <section className={`code-window ${isCodeCollapsed ? "mobile-collapsed" : ""} ${isEditorFullscreen ? "editor-fullscreen" : ""}`}>
         <LayoutGroup id="file-window-tabs">
           <div className="window-header">
             <div ref={tabsRef} className="window-tabs" role="tablist" aria-label={t(locale, "fileWindow")}>
@@ -1839,25 +1911,39 @@ export default function HomePage() {
             </div>
             <div className="editor-toolbar">
               <div className="editor-toolbar-mobile mobile-only">
-                <button
-                  type="button"
-                  className="file-add"
-                  onClick={() => addFile(selectedAlgorithmId, selectedLanguage)}
-                  aria-label={t(locale, "addFile")}
-                  title={t(locale, "addFile")}
-                >
-                  <AddFileIcon className="file-add-icon" />
-                </button>
-                <button
-                  type="button"
-                  className="editor-tool-chip"
-                  onClick={() => setIsCodeCollapsed((value) => !value)}
-                  title={isCodeCollapsed ? t(locale, "expandCode") : t(locale, "collapseCode")}
-                  aria-expanded={!isCodeCollapsed}
-                  aria-label={isCodeCollapsed ? t(locale, "expandCode") : t(locale, "collapseCode")}
-                >
-                  <CollapseCodeIcon className="editor-tool-icon" collapsed={isCodeCollapsed} />
-                </button>
+                {isEditorFullscreen ? (
+                  <button
+                    type="button"
+                    className="editor-tool-chip editor-fullscreen-back"
+                    onClick={() => setIsEditorFullscreen(false)}
+                    aria-label={t(locale, "exitFullscreen")}
+                    title={t(locale, "exitFullscreen")}
+                  >
+                    <FullscreenBackIcon className="editor-tool-icon" />
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="file-add"
+                      onClick={() => addFile(selectedAlgorithmId, selectedLanguage)}
+                      aria-label={t(locale, "addFile")}
+                      title={t(locale, "addFile")}
+                    >
+                      <AddFileIcon className="file-add-icon" />
+                    </button>
+                    <button
+                      type="button"
+                      className="editor-tool-chip"
+                      onClick={() => setIsCodeCollapsed((value) => !value)}
+                      title={isCodeCollapsed ? t(locale, "expandCode") : t(locale, "collapseCode")}
+                      aria-expanded={!isCodeCollapsed}
+                      aria-label={isCodeCollapsed ? t(locale, "expandCode") : t(locale, "collapseCode")}
+                    >
+                      <CollapseCodeIcon className="editor-tool-icon" collapsed={isCodeCollapsed} />
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
                   className="editor-tool-chip editor-run-button"
@@ -1922,7 +2008,25 @@ export default function HomePage() {
                     <FontLargeIcon className="editor-tool-icon" />
                   </button>
                 </div>
+                <button
+                  type="button"
+                  className={`editor-tool-chip ${isEditorFullscreen ? "active" : ""}`}
+                  onClick={() => setIsEditorFullscreen((v) => !v)}
+                  aria-label={isEditorFullscreen ? t(locale, "exitFullscreen") : t(locale, "fullscreen")}
+                  title={isEditorFullscreen ? t(locale, "exitFullscreen") : t(locale, "fullscreen")}
+                >
+                  <FullscreenIcon className="editor-tool-icon" active={isEditorFullscreen} />
+                </button>
               </div>
+              <button
+                type="button"
+                className={`editor-tool-chip mobile-only ${isEditorFullscreen ? "active" : ""}`}
+                onClick={() => setIsEditorFullscreen((v) => !v)}
+                aria-label={isEditorFullscreen ? t(locale, "exitFullscreen") : t(locale, "fullscreen")}
+                title={isEditorFullscreen ? t(locale, "exitFullscreen") : t(locale, "fullscreen")}
+              >
+                <FullscreenIcon className="editor-tool-icon" active={isEditorFullscreen} />
+              </button>
               <button
                 type="button"
                 className={`editor-tool-chip editor-menu-button mobile-only ${isEditorMenuOpen ? "active" : ""}`}
@@ -1994,7 +2098,7 @@ export default function HomePage() {
         </AnimatePresence>
 
         <AnimatePresence initial={false}>
-          {!isMobileViewport || !isCodeCollapsed ? (
+          {isEditorFullscreen || !isMobileViewport || !isCodeCollapsed ? (
             <motion.div
               key="editor-panel"
               className="editor-panel"
@@ -2007,7 +2111,7 @@ export default function HomePage() {
                 language={selectedLanguage}
                 path={activeFile.name}
                 value={activeFile.content}
-                height="360px"
+                height={isEditorFullscreen ? "100%" : "360px"}
                 wrapMode={editorWrapMode}
                 fontMode={editorFontMode}
                 onMount={(editor) => {
