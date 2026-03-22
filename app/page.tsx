@@ -1891,12 +1891,12 @@ export default function HomePage() {
                 layout
                 whileTap={{ scale: 0.96 }}
                 type="button"
-                className="file-add file-add-inline"
+                className="editor-tool-chip file-add-inline"
                 onClick={() => addFile(selectedAlgorithmId, selectedLanguage)}
                 aria-label={t(locale, "addFile")}
                 title={t(locale, "addFile")}
               >
-                <AddFileIcon className="file-add-icon" />
+                <AddFileIcon className="editor-tool-icon" />
               </motion.button>
               <button
                 type="button"
@@ -1925,12 +1925,12 @@ export default function HomePage() {
                   <>
                     <button
                       type="button"
-                      className="file-add"
+                      className="editor-tool-chip"
                       onClick={() => addFile(selectedAlgorithmId, selectedLanguage)}
                       aria-label={t(locale, "addFile")}
                       title={t(locale, "addFile")}
                     >
-                      <AddFileIcon className="file-add-icon" />
+                      <AddFileIcon className="editor-tool-icon" />
                     </button>
                     <button
                       type="button"
@@ -1944,6 +1944,15 @@ export default function HomePage() {
                     </button>
                   </>
                 )}
+                <button
+                  type="button"
+                  className={`editor-tool-chip ${isEditorFullscreen ? "active" : ""}`}
+                  onClick={() => setIsEditorFullscreen((v) => !v)}
+                  aria-label={isEditorFullscreen ? t(locale, "exitFullscreen") : t(locale, "fullscreen")}
+                  title={isEditorFullscreen ? t(locale, "exitFullscreen") : t(locale, "fullscreen")}
+                >
+                  <FullscreenIcon className="editor-tool-icon" active={isEditorFullscreen} />
+                </button>
                 <button
                   type="button"
                   className="editor-tool-chip editor-run-button"
@@ -2018,15 +2027,6 @@ export default function HomePage() {
                   <FullscreenIcon className="editor-tool-icon" active={isEditorFullscreen} />
                 </button>
               </div>
-              <button
-                type="button"
-                className={`editor-tool-chip mobile-only ${isEditorFullscreen ? "active" : ""}`}
-                onClick={() => setIsEditorFullscreen((v) => !v)}
-                aria-label={isEditorFullscreen ? t(locale, "exitFullscreen") : t(locale, "fullscreen")}
-                title={isEditorFullscreen ? t(locale, "exitFullscreen") : t(locale, "fullscreen")}
-              >
-                <FullscreenIcon className="editor-tool-icon" active={isEditorFullscreen} />
-              </button>
               <button
                 type="button"
                 className={`editor-tool-chip editor-menu-button mobile-only ${isEditorMenuOpen ? "active" : ""}`}
