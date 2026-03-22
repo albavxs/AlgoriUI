@@ -1922,27 +1922,16 @@ export default function HomePage() {
                     <FullscreenBackIcon className="editor-tool-icon" />
                   </button>
                 ) : (
-                  <>
-                    <button
-                      type="button"
-                      className="editor-tool-chip"
-                      onClick={() => addFile(selectedAlgorithmId, selectedLanguage)}
-                      aria-label={t(locale, "addFile")}
-                      title={t(locale, "addFile")}
-                    >
-                      <AddFileIcon className="editor-tool-icon" />
-                    </button>
-                    <button
-                      type="button"
-                      className="editor-tool-chip"
-                      onClick={() => setIsCodeCollapsed((value) => !value)}
-                      title={isCodeCollapsed ? t(locale, "expandCode") : t(locale, "collapseCode")}
-                      aria-expanded={!isCodeCollapsed}
-                      aria-label={isCodeCollapsed ? t(locale, "expandCode") : t(locale, "collapseCode")}
-                    >
-                      <CollapseCodeIcon className="editor-tool-icon" collapsed={isCodeCollapsed} />
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    className="editor-tool-chip"
+                    onClick={() => setIsCodeCollapsed((value) => !value)}
+                    title={isCodeCollapsed ? t(locale, "expandCode") : t(locale, "collapseCode")}
+                    aria-expanded={!isCodeCollapsed}
+                    aria-label={isCodeCollapsed ? t(locale, "expandCode") : t(locale, "collapseCode")}
+                  >
+                    <CollapseCodeIcon className="editor-tool-icon" collapsed={isCodeCollapsed} />
+                  </button>
                 )}
                 <button
                   type="button"
@@ -2051,6 +2040,19 @@ export default function HomePage() {
               exit={{ opacity: 0, y: -8, scale: 0.98, filter: "blur(4px)" }}
               transition={{ duration: 0.22, ease: "easeOut" }}
             >
+              <button
+                type="button"
+                className="editor-mobile-action"
+                onClick={() => {
+                  addFile(selectedAlgorithmId, selectedLanguage);
+                  setIsEditorMenuOpen(false);
+                }}
+                aria-label={t(locale, "addFile")}
+                title={t(locale, "addFile")}
+              >
+                <AddFileIcon className="editor-tool-icon" />
+                <span>{t(locale, "addFile")}</span>
+              </button>
               <div className="editor-tool-group" aria-label={t(locale, "wrapMode")}>
                 {(["auto", "wrap", "nowrap"] as const).map((mode) => (
                   <button

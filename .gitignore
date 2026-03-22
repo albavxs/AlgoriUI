@@ -8,3 +8,4 @@ pnpm-debug.log*
 .DS_Store
 .env*
 doc_core,md
+.claude 

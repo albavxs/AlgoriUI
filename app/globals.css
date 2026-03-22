@@ -1496,7 +1496,7 @@ input[type="range"]:disabled {
 
   .window-tabs {
     width: 100%;
-    padding-right: 132px;
+    padding-right: 168px;
     scroll-padding-inline: 12px;
     overscroll-behavior-x: contain;
   }
@@ -1527,6 +1527,7 @@ input[type="range"]:disabled {
     width: auto;
     justify-content: flex-end;
     flex: 0 0 auto;
+    flex-wrap: nowrap;
   }
 
   .editor-toolbar-desktop {
@@ -1602,7 +1603,18 @@ input[type="range"]:disabled {
   }
 
   .editor-mobile-action {
-    justify-content: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.014);
+    border: 1px solid rgba(140, 154, 182, 0.08);
+    color: rgba(184, 194, 218, 0.72);
+    font-size: 0.74rem;
+    font-weight: 600;
+    white-space: nowrap;
+    width: 100%;
   }
 
   .editor-shell,
