@@ -240,18 +240,6 @@ function FullscreenBackIcon({ className }: IconProps) {
   );
 }
 
-function CollapseCodeIcon({ className, collapsed }: IconProps & { collapsed: boolean }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <rect x="4" y="5" width="12" height="10" rx="2.2" stroke="currentColor" strokeWidth="1.4" />
-      {collapsed ? (
-        <path d="M8 11L10 9L12 11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-      ) : (
-        <path d="M8 9L10 11L12 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-      )}
-    </svg>
-  );
-}
 
 function AddFileIcon({ className }: IconProps) {
   return (
@@ -739,7 +727,7 @@ export default function HomePage() {
   const [statusNote, setStatusNote] = useState("");
   const [autoPlayPending, setAutoPlayPending] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
-  const [isCodeCollapsed, setIsCodeCollapsed] = useState(false);
+
   const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
   const [isEditorMenuOpen, setIsEditorMenuOpen] = useState(false);
   const [isSiteMenuOpen, setIsSiteMenuOpen] = useState(false);
@@ -897,7 +885,7 @@ export default function HomePage() {
 
     const frame = window.requestAnimationFrame(() => editor.layout());
     return () => window.cancelAnimationFrame(frame);
-  }, [activeFile.id, editorFontMode, editorWrapMode, isCodeCollapsed, isEditorFullscreen, selectedAlgorithmId, selectedLanguage]);
+  }, [activeFile.id, editorFontMode, editorWrapMode, isEditorFullscreen, selectedAlgorithmId, selectedLanguage]);
 
   useEffect(() => {
     if (!isEditorFullscreen) return;
@@ -953,7 +941,6 @@ export default function HomePage() {
       const isMobile = window.innerWidth <= 640;
       setIsMobileViewport(isMobile);
       if (!isMobile) {
-        setIsCodeCollapsed(false);
         setIsEditorMenuOpen(false);
       }
     };
@@ -1830,7 +1817,7 @@ export default function HomePage() {
         />
       </section>
 
-      <section className={`code-window ${isCodeCollapsed ? "mobile-collapsed" : ""} ${isEditorFullscreen ? "editor-fullscreen" : ""}`}>
+      <section className={`code-window ${isEditorFullscreen ? "editor-fullscreen" : ""}`}>
         <LayoutGroup id="file-window-tabs">
           <div className="window-header">
             <div ref={tabsRef} className="window-tabs" role="tablist" aria-label={t(locale, "fileWindow")}>
@@ -1898,20 +1885,10 @@ export default function HomePage() {
               >
                 <AddFileIcon className="editor-tool-icon" />
               </motion.button>
-              <button
-                type="button"
-                className="editor-tool-chip file-add-inline"
-                onClick={() => setIsCodeCollapsed((value) => !value)}
-                title={isCodeCollapsed ? t(locale, "expandCode") : t(locale, "collapseCode")}
-                aria-expanded={!isCodeCollapsed}
-                aria-label={isCodeCollapsed ? t(locale, "expandCode") : t(locale, "collapseCode")}
-              >
-                <CollapseCodeIcon className="editor-tool-icon" collapsed={isCodeCollapsed} />
-              </button>
             </div>
             <div className="editor-toolbar">
               <div className="editor-toolbar-mobile mobile-only">
-                {isEditorFullscreen ? (
+                {isEditorFullscreen && (
                   <button
                     type="button"
                     className="editor-tool-chip editor-fullscreen-back"
@@ -1920,17 +1897,6 @@ export default function HomePage() {
                     title={t(locale, "exitFullscreen")}
                   >
                     <FullscreenBackIcon className="editor-tool-icon" />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="editor-tool-chip"
-                    onClick={() => setIsCodeCollapsed((value) => !value)}
-                    title={isCodeCollapsed ? t(locale, "expandCode") : t(locale, "collapseCode")}
-                    aria-expanded={!isCodeCollapsed}
-                    aria-label={isCodeCollapsed ? t(locale, "expandCode") : t(locale, "collapseCode")}
-                  >
-                    <CollapseCodeIcon className="editor-tool-icon" collapsed={isCodeCollapsed} />
                   </button>
                 )}
                 <button
@@ -2099,33 +2065,22 @@ export default function HomePage() {
           ) : null}
         </AnimatePresence>
 
-        <AnimatePresence initial={false}>
-          {isEditorFullscreen || !isMobileViewport || !isCodeCollapsed ? (
-            <motion.div
-              key="editor-panel"
-              className="editor-panel"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-            >
-              <CodeEditor
-                language={selectedLanguage}
-                path={activeFile.name}
-                value={activeFile.content}
-                height={isEditorFullscreen ? "100%" : "360px"}
-                wrapMode={editorWrapMode}
-                fontMode={editorFontMode}
-                onMount={(editor) => {
-                  editorRef.current = editor;
-                }}
-                onChange={(value) =>
-                  updateFileContent(selectedAlgorithmId, selectedLanguage, activeFile.id, value)
-                }
-              />
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
+        <div className="editor-panel">
+          <CodeEditor
+            language={selectedLanguage}
+            path={activeFile.name}
+            value={activeFile.content}
+            height={isEditorFullscreen ? "100%" : "360px"}
+            wrapMode={editorWrapMode}
+            fontMode={editorFontMode}
+            onMount={(editor) => {
+              editorRef.current = editor;
+            }}
+            onChange={(value) =>
+              updateFileContent(selectedAlgorithmId, selectedLanguage, activeFile.id, value)
+            }
+          />
+        </div>
       </section>
 
       <section className="panel-card controls-panel">
