@@ -608,6 +608,8 @@ input[type="range"]:disabled {
   flex-direction: column;
   border-radius: 0;
   overflow: hidden;
+  height: 100vh;
+  height: 100dvh;
 }
 
 .code-window.editor-fullscreen .window-header {
@@ -624,15 +626,6 @@ input[type="range"]:disabled {
 .code-window.editor-fullscreen .editor-shell {
   flex: 1;
   min-height: 0;
-}
-
-.code-window.editor-fullscreen .editor-shell > div,
-.code-window.editor-fullscreen .editor-shell .monaco-editor,
-.code-window.editor-fullscreen .editor-shell .monaco-editor-background,
-.code-window.editor-fullscreen .editor-shell .overflow-guard,
-.code-window.editor-fullscreen .editor-shell .monaco-scrollable-element {
-  min-height: 0 !important;
-  height: 100% !important;
 }
 
 .editor-fullscreen-back {
@@ -1624,6 +1617,14 @@ input[type="range"]:disabled {
   .editor-shell .overflow-guard {
     min-height: 320px;
   }
+
+  .code-window.editor-fullscreen .editor-shell,
+  .code-window.editor-fullscreen .editor-shell > div,
+  .code-window.editor-fullscreen .editor-shell .monaco-editor,
+  .code-window.editor-fullscreen .editor-shell .monaco-editor-background,
+  .code-window.editor-fullscreen .editor-shell .overflow-guard {
+    min-height: 0 !important;
+  }
 }
 
 /* ── Site menu (topbar icon + dropdown) ─────────────────────────────────── */
@@ -1995,5 +1996,10 @@ input[type="range"]:disabled {
   textarea,
   input:not([type="range"]):not([type="file"]):not([type="checkbox"]) {
     font-size: 16px;
+  }
+
+  /* Monaco's hidden textarea triggers iOS auto-zoom if font-size < 16px */
+  .monaco-editor textarea {
+    font-size: 16px !important;
   }
 }

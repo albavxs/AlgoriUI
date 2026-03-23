@@ -729,6 +729,8 @@ export default function HomePage() {
   const [isMobileViewport, setIsMobileViewport] = useState(false);
 
   const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
+  const [fullscreenEditorHeight, setFullscreenEditorHeight] = useState("360px");
+  const windowHeaderRef = useRef<HTMLDivElement>(null);
   const [isEditorMenuOpen, setIsEditorMenuOpen] = useState(false);
   const [isSiteMenuOpen, setIsSiteMenuOpen] = useState(false);
   const [activeMobilePicker, setActiveMobilePicker] = useState<MobilePickerName | null>(null);
@@ -897,6 +899,24 @@ export default function HomePage() {
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
+  }, [isEditorFullscreen]);
+
+  useEffect(() => {
+    if (!isEditorFullscreen) {
+      setFullscreenEditorHeight("360px");
+      return;
+    }
+
+    const recalcHeight = () => {
+      const vp = window.visualViewport;
+      const viewportHeight = vp ? vp.height : window.innerHeight;
+      const headerHeight = windowHeaderRef.current?.offsetHeight ?? 50;
+      setFullscreenEditorHeight(`${Math.max(viewportHeight - headerHeight, 200)}px`);
+    };
+
+    recalcHeight();
+    window.visualViewport?.addEventListener("resize", recalcHeight);
+    return () => window.visualViewport?.removeEventListener("resize", recalcHeight);
   }, [isEditorFullscreen]);
 
   useEffect(() => {
@@ -1819,7 +1839,7 @@ export default function HomePage() {
 
       <section className={`code-window ${isEditorFullscreen ? "editor-fullscreen" : ""}`}>
         <LayoutGroup id="file-window-tabs">
-          <div className="window-header">
+          <div ref={windowHeaderRef} className="window-header">
             <div ref={tabsRef} className="window-tabs" role="tablist" aria-label={t(locale, "fileWindow")}>
               <AnimatePresence initial={false}>
                 {project.files.map((file) => {
@@ -2070,7 +2090,7 @@ export default function HomePage() {
             language={selectedLanguage}
             path={activeFile.name}
             value={activeFile.content}
-            height={isEditorFullscreen ? "100%" : "360px"}
+            height={isEditorFullscreen ? fullscreenEditorHeight : "360px"}
             wrapMode={editorWrapMode}
             fontMode={editorFontMode}
             onMount={(editor) => {

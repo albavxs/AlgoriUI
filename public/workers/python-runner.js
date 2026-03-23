@@ -40,12 +40,25 @@ function ensureDir(fs, targetPath) {
   }
 }
 
+function cleanTraceback(raw) {
+  const lines = String(raw).split("\n");
+  const cleaned = lines.filter(
+    (line) =>
+      !line.includes("<exec>") &&
+      !line.includes("runpy") &&
+      !line.includes("_run_module_code") &&
+      !line.includes("_run_code")
+  );
+  return cleaned.join("\n").trim() || String(raw);
+}
+
 self.onmessage = async (event) => {
   const files = Array.isArray(event.data?.files) ? event.data.files : [];
   const entrypoint = String(event.data?.entrypoint ?? "main.py");
   const input = event.data?.input;
   const events = [];
-  const logs = [];
+  const stdoutLogs = [];
+  const stderrLogs = [];
 
   try {
     const pyodide = await getPyodide();
@@ -60,10 +73,10 @@ self.onmessage = async (event) => {
     }
 
     pyodide.setStdout({
-      batched: (text) => logs.push(String(text))
+      batched: (text) => stdoutLogs.push(String(text))
     });
     pyodide.setStderr({
-      batched: (text) => logs.push(String(text))
+      batched: (text) => stderrLogs.push(String(text))
     });
 
     const emitStep = (payload) => {
@@ -122,14 +135,15 @@ __result
     self.postMessage({
       ok: true,
       events,
-      stdout: logs.join("\n"),
+      stdout: stdoutLogs.join("\n"),
+      stderr: stderrLogs.join("\n") || undefined,
       result
     });
   } catch (error) {
     self.postMessage({
       ok: false,
       events,
-      stderr: String(error?.stack ?? error)
+      stderr: cleanTraceback(error?.stack ?? error)
     });
   }
 };
