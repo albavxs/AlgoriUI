@@ -1,0 +1,21 @@
+# =============================================================================
+# AlgoriUI — CODEOWNERS
+# =============================================================================
+# Regras são avaliadas de BAIXO PRA CIMA — o último match vence.
+# =============================================================================
+
+# Sem regra default (* @owner) — o time generalista pode abrir PRs
+# livremente em qualquer arquivo NÃO listado abaixo.
+
+# ---------------------------------------------------------------------------
+# PROTEGIDO: Superfície de conteúdo — sons e tipos
+# ---------------------------------------------------------------------------
+/lib/types.ts                     @albavxs
+/lib/store.ts                     @albavxs
+
+# ---------------------------------------------------------------------------
+# PROTEGIDO: Governança — licença e dependências
+# ---------------------------------------------------------------------------
+/LICENSE                          @albavxs
+/package.json                     @albavxs
+/package-lock.json                @albavxs
