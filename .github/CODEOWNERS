@@ -4,8 +4,8 @@
 # Regras são avaliadas de BAIXO PRA CIMA — o último match vence.
 # =============================================================================
 
-# Sem regra default (* @owner) — o time generalista pode abrir PRs
-# livremente em qualquer arquivo NÃO listado abaixo.
+# DEFAULT: Todo PR contra main precisa de aprovação do lead.
+*                                 @albavxs
 
 # ---------------------------------------------------------------------------
 # PROTEGIDO: Superfície de conteúdo — sons e tipos
