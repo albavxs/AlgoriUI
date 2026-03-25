@@ -412,26 +412,24 @@ function MiniBucketView({ step }: { step: BucketStep }) {
             style={{ height: `${Math.max((v / max) * 100, 4)}%`, background: step.done ? "rgba(50,215,75,0.55)" : "rgba(34,211,238,0.55)" }} />
         ))}
       </div>
-      {!step.done && (
-        <div className="mini-bucket-grid" style={{ flex: 1 }}>
-          {step.buckets.map((items, bi) => {
-            const isActive = bi === step.activeBucket;
-            return (
-              <div key={bi} className={`mini-bucket-col${isActive ? " active" : ""}`}>
-                <div className="mini-bucket-items">
-                  {items.map((v, j) => (
-                    <div key={j} className="mini-bucket-item" style={{
-                      background: isActive ? "rgba(34,211,238,0.3)" : "rgba(100,116,139,0.3)",
-                      borderColor: isActive ? "rgba(34,211,238,0.2)" : "rgba(100,116,139,0.2)"
-                    }}>{v}</div>
-                  ))}
-                </div>
-                <div className="mini-bucket-label">B{bi}</div>
+      <div className="mini-bucket-grid" style={{ flex: 1, opacity: step.done ? 0 : 1, transition: "opacity 200ms ease" }}>
+        {step.buckets.map((items, bi) => {
+          const isActive = bi === step.activeBucket;
+          return (
+            <div key={bi} className={`mini-bucket-col${isActive ? " active" : ""}`}>
+              <div className="mini-bucket-items">
+                {items.map((v, j) => (
+                  <div key={j} className="mini-bucket-item" style={{
+                    background: isActive ? "rgba(34,211,238,0.3)" : "rgba(100,116,139,0.3)",
+                    borderColor: isActive ? "rgba(34,211,238,0.2)" : "rgba(100,116,139,0.2)"
+                  }}>{v}</div>
+                ))}
               </div>
-            );
-          })}
-        </div>
-      )}
+              <div className="mini-bucket-label">B{bi}</div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -557,6 +555,7 @@ const STEP_MS = 85;
 
 function getStepMs(id: AlgorithmId): number {
   if (id === "stalin-sort") return 180;
+  if (id === "bucket-sort") return 220;
   return STEP_MS;
 }
 
