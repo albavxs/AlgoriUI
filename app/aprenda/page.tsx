@@ -26,8 +26,8 @@ const learnData: LearnSection[] = [
   {
     algorithmId: "bubble-sort",
     bookRef: {
-      pt: "Entendendo Algoritmos — Cap. 2: Ordenação por seleção",
-      en: "Grokking Algorithms — Ch. 2: Selection Sort"
+      pt: "Algoritmo clássico de ordenação por comparação",
+      en: "Classic comparison-based sorting algorithm"
     },
     description: {
       pt: "Bubble Sort compara pares adjacentes e troca aqueles fora de ordem. A cada passagem, o maior elemento não ordenado 'flutua' para seu lugar correto no final do array.",

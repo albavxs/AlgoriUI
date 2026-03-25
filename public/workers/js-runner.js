@@ -67,7 +67,8 @@ function createResolver(files) {
 self.onmessage = async (event) => {
   const files = Array.isArray(event.data?.files) ? event.data.files : [];
   const entrypoint = String(event.data?.entrypoint ?? "");
-  const input = event.data?.input ?? [];
+  const rawInput = event.data?.input;
+  const input = (rawInput != null && typeof rawInput === "object") ? rawInput : [];
   const events = [];
   const logs = [];
 

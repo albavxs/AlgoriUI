@@ -479,7 +479,10 @@ input[type="range"]:disabled {
 .bars-wrap,
 .graph-stage,
 .maze-stage,
-.viz-empty {
+.viz-empty,
+.heap-wrap,
+.radix-wrap,
+.bucket-wrap {
   width: 100%;
   height: var(--viz-stage-height);
   min-height: var(--viz-stage-height);
@@ -488,7 +491,7 @@ input[type="range"]:disabled {
 .bars-wrap {
   display: flex;
   align-items: flex-end;
-  gap: 8px;
+  gap: clamp(2px, 1vw, 8px);
   height: var(--viz-stage-height);
   padding: 28px 10px 12px;
   position: relative;
@@ -1366,7 +1369,10 @@ input[type="range"]:disabled {
   .bars-wrap,
   .graph-stage,
   .maze-stage,
-  .viz-empty {
+  .viz-empty,
+  .heap-wrap,
+  .radix-wrap,
+  .bucket-wrap {
     min-height: 336px;
   }
 
@@ -1470,7 +1476,10 @@ input[type="range"]:disabled {
   .bars-wrap,
   .graph-stage,
   .maze-stage,
-  .viz-empty {
+  .viz-empty,
+  .heap-wrap,
+  .radix-wrap,
+  .bucket-wrap {
     height: var(--viz-stage-height);
     min-height: var(--viz-stage-height);
   }
@@ -1724,18 +1733,18 @@ input[type="range"]:disabled {
 /* ── Heap Visualizer ─────────────────────────────────────────────────────── */
 
 .heap-wrap {
-  width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
   gap: 10px;
   position: relative;
+  overflow: hidden;
 }
 
 .heap-svg {
   width: 100%;
   flex: 1;
   min-height: 0;
+  max-height: 240px;
 }
 
 .heap-bars {
@@ -1749,12 +1758,11 @@ input[type="range"]:disabled {
 /* ── Bucket Visualizer ───────────────────────────────────────────────────── */
 
 .bucket-wrap {
-  width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
   gap: 10px;
   position: relative;
+  overflow: hidden;
 }
 
 .bucket-input-bars {
@@ -1821,19 +1829,18 @@ input[type="range"]:disabled {
 /* ── Radix Visualizer ────────────────────────────────────────────────────── */
 
 .radix-wrap {
-  width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
   gap: 8px;
   position: relative;
+  overflow: hidden;
 }
 
 .radix-bars {
   display: flex;
   align-items: flex-end;
   gap: clamp(1px, 0.6vw, 4px);
-  height: 90px;
+  height: clamp(50px, 25%, 90px);
   flex-shrink: 0;
 }
 

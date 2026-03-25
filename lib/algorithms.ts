@@ -888,7 +888,7 @@ function heapify(arr: number[], n: number, i: number): void {
 }
 
 async function run(input: number[]) {
-  const arr = [...input];
+  const arr = Array.isArray(input) ? [...input] : [];
   const n = arr.length;
   emitStep({ t: "array", arr: [...arr], heapSize: n });
 
@@ -923,7 +923,7 @@ function heapify(arr, n, i) {
 }
 
 async function run(input) {
-  const arr = [...input];
+  const arr = Array.isArray(input) ? [...input] : [];
   const n = arr.length;
   emitStep({ t: "array", arr: [...arr], heapSize: n });
 
@@ -958,7 +958,7 @@ def heapify(arr, n, i):
         heapify(arr, n, largest)
 
 def run(input_data):
-    arr = list(input_data)
+    arr = list(input_data) if hasattr(input_data, '__iter__') else []
     n = len(arr)
     emitStep({"t": "array", "arr": list(arr), "heapSize": n})
 
