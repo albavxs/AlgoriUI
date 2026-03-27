@@ -239,7 +239,7 @@ function migrateLegacyCodeMap(codeMap: LegacyCodeMap | undefined): ProjectMap {
 export const useAppStore = create<AppStore>()(
   persist(
     (set) => ({
-      locale: "pt",
+      locale: "en",
       selectedAlgorithmId: "stalin-sort",
       selectedLanguage: "ts",
       speed: 1,
